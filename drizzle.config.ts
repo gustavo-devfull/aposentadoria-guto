@@ -5,5 +5,6 @@ export default defineConfig({
   dialect: "postgresql",
   schema: "./db/schema.ts",
   out: "./db/migrations",
-  dbCredentials: { url: process.env.DATABASE_URL ?? "" },
+  // Migrations: use a conexão direta ou o "Session pooler" (porta 5432) em DIRECT_URL.
+  dbCredentials: { url: process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "" },
 });

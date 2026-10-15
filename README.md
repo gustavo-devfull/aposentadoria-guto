@@ -1,6 +1,6 @@
 # Simulador e Gestor de Aposentadoria
 
-Next.js (App Router) + TypeScript strict + Drizzle/Postgres + Auth.js. Todos os valores do motor são **reais (R$ de hoje)**; o nominal é derivado por `valor × (1+inflação)^(meses/12)`.
+Next.js (App Router) + TypeScript strict + Drizzle/**Supabase Postgres** (`postgres-js`) + Auth.js. Todos os valores do motor são **reais (R$ de hoje)**; o nominal é derivado por `valor × (1+inflação)^(meses/12)`.
 
 ## Comandos
 `npm run test` · `npm run typecheck` · `npm run lint` · `npm run db:generate` · `npm run db:migrate` · `npm run db:seed`
@@ -29,3 +29,9 @@ Roda o **mesmo** motor com retornos anuais aleatórios por trajetória. Média =
 ## Testes
 `npm test` (Vitest: motor, regras de tela, Monte Carlo) · `npm run e2e` (Playwright sobre `/demo`; `PW_CHROMIUM=/caminho/chromium` se necessário).
 O fluxo autenticado de ponta a ponta exige `DATABASE_URL` e credenciais de teste do Auth.js.
+
+## Banco (Supabase)
+1. `cp .env.example .env` e preencha `DATABASE_URL` (Transaction pooler, 6543) e `DIRECT_URL` (Session pooler, 5432) com a senha do banco.
+2. `npm run db:migrate` — aplica as 4 migrations (a `0003` ativa **RLS** em todas as tabelas: a API pública do Supabase fica sem acesso; só o servidor do app lê/grava, sempre filtrando por `user_id`).
+3. Na Vercel, defina `DATABASE_URL` (a do pooler transacional) e as demais variáveis do `.env.example`.
+Os testes de integração (`tests/db.integration.test.ts`) rodam as migrations num Postgres real em memória (PGlite).
