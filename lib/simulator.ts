@@ -90,7 +90,8 @@ export function simulateRetirement(input: SimpleInput, retirementAge: number): S
   const months = Math.max(0, Math.round((retirementAge - input.currentAge) * 12));
   const patrimonio = futureValue(input.invested, input.monthly, r, months);
   const payoutMonths = Math.max(0, Math.round((input.horizonAge - retirementAge) * 12));
-  const rendaJuros = Math.max(0, patrimonio * r);
+  // Saque no início do mês: P·r/(1+r) é o máximo que mantém o patrimônio exatamente intacto.
+  const rendaJuros = Math.max(0, (patrimonio * r) / (1 + r));
   const rendaConsumo = annuityPayment(patrimonio, r, payoutMonths);
   const anosAteAposentadoria = months / 12;
   const anosAteInss = Math.max(0, input.inssStartAge - input.currentAge);
@@ -146,6 +147,67 @@ export function wealthByAge(input: SimpleInput, retirementAges: number[], nomina
     points.push(point);
   }
   return points;
+}
+
+export type IncomeMode = "consumo" | "juros";
+
+export interface MonthRow {
+  /** 1 = próximo mês. */
+  month: number;
+  /** "AAAA-MM". */
+  date: string;
+  /** Idade em anos (fracionária). */
+  age: number;
+  phase: "acumulacao" | "aposentadoria";
+  saldoInicial: number;
+  aporte: number;
+  saque: number;
+  juros: number;
+  inss: number;
+  /** Renda do mês: saque + INSS. */
+  renda: number;
+  saldoFinal: number;
+  /** Fator R$ de hoje → R$ projetados daquele mês. */
+  fator: number;
+}
+
+/**
+ * Mês a mês, em R$ de hoje, de agora até `horizonAge`: aportes até a aposentadoria e,
+ * depois, saque constante (consumindo até o horizonte ou só os juros) + INSS a partir de `inssStartAge`.
+ * Mesmas convenções de `simulateRetirement`: aporte no fim do mês, saque no início.
+ */
+export function monthlySchedule(input: SimpleInput, retirementAge: number, mode: IncomeMode, today: Date = new Date()): MonthRow[] {
+  const r = realMonthlyRate(input.annualRate, input.inflation);
+  const res = simulateRetirement(input, retirementAge);
+  const saqueMensal = mode === "consumo" ? res.rendaConsumo : res.rendaJuros;
+  const total = Math.max(0, Math.round((input.horizonAge - input.currentAge) * 12));
+  const inssFrom = Math.round((input.inssStartAge - input.currentAge) * 12);
+  const y0 = today.getUTCFullYear(), m0 = today.getUTCMonth();
+  const gm = Math.pow(1 + input.inflation, 1 / 12);
+  const rows: MonthRow[] = [];
+  let saldo = input.invested;
+  for (let k = 1; k <= total; k++) {
+    const d = new Date(Date.UTC(y0, m0 + k, 1));
+    const retired = k > res.months;
+    const saldoInicial = saldo;
+    const saque = retired ? Math.min(saqueMensal, saldo) : 0;
+    const aporte = retired ? 0 : input.monthly;
+    const juros = (saldo - saque) * r;
+    saldo = saldo - saque + juros + aporte;
+    if (Math.abs(saldo) < 0.005) saldo = 0;
+    const inss = k > inssFrom ? input.inssBenefit : 0;
+    rows.push({
+      month: k,
+      date: `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`,
+      age: input.currentAge + k / 12,
+      phase: retired ? "aposentadoria" : "acumulacao",
+      saldoInicial, aporte, saque, juros, inss,
+      renda: saque + inss,
+      saldoFinal: saldo,
+      fator: Math.pow(gm, k),
+    });
+  }
+  return rows;
 }
 
 /** Atalhos de taxa (exemplos editáveis — confira as taxas do momento). */

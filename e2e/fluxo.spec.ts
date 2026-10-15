@@ -34,6 +34,20 @@ test("gráfico alterna entre R$ de hoje e projetado", async ({ page }) => {
   await expect(btn).toHaveAttribute("aria-pressed", "true");
 });
 
+test("mês a mês: marcos, alternâncias e CSV", async ({ page }) => {
+  await page.goto("/demo?view=mes");
+  const table = page.getByTestId("monthly-table");
+  await expect(table).toContainText("Aposentadoria e início do INSS aos 65");
+  await page.getByRole("button", { name: "60 anos" }).click();
+  await expect(table).toContainText("Aposentadoria aos 60");
+  await expect(table).toContainText("Início do INSS aos 65");
+  const before = await table.innerText();
+  await page.getByRole("button", { name: "Projetado" }).click();
+  await expect(table).not.toHaveText(before);
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exportar CSV" }).click()]);
+  expect(download.suggestedFilename()).toBe("mes-a-mes-aposentadoria-60-consumo-projetado.csv");
+});
+
 test("comparar destaca as premissas que diferem", async ({ page }) => {
   await page.goto("/demo?view=comparar");
   const premises = page.getByTestId("compare-premises");

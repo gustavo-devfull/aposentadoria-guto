@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Dashboard } from "@/components/dashboard";
 import { Simulator } from "@/components/simulator";
 import { CompareView } from "@/components/compare-view";
+import { MonthlyView } from "@/components/monthly-view";
 import { defaultPlan, type PlanInput } from "@/lib/plan";
 
 export const dynamic = "force-dynamic";
@@ -20,8 +21,9 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
     <div className="space-y-4">
       <p className="rounded-xl bg-warn-soft px-4 py-2.5 text-sm text-warn-fg">Dados fictícios de demonstração.</p>
       {view === "simulador" ? <Simulator initial={plan} hasPlan canSave={false} />
+        : view === "mes" ? <MonthlyView plan={plan} simHref="/demo?view=simulador" />
         : view === "comparar" ? <CompareView scenarios={scenarios} canDelete={false} />
-        : <Dashboard plan={plan} editHref="/demo?view=simulador" />}
+        : <Dashboard plan={plan} editHref="/demo?view=simulador" monthlyHref="/demo?view=mes" />}
     </div>
   );
 }

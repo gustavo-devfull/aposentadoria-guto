@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 const LINKS = [
   { href: "/dashboard", label: "Meu plano", demo: "" },
   { href: "/simulador", label: "Simulador", demo: "simulador" },
+  { href: "/mes-a-mes", label: "Mês a mês", demo: "mes" },
   { href: "/comparar", label: "Comparar", demo: "comparar" },
 ];
 
