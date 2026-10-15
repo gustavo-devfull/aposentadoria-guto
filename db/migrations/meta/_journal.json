@@ -8,6 +8,13 @@
       "when": 1792081889597,
       "tag": "0000_married_diamondback",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792083498957,
+      "tag": "0001_late_scourge",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,16 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+export interface ClassSnapshot {
+  id: string;
+  name: string;
+  pessimista: number;
+  base: number;
+  otimista: number;
+  contracted: number | null;
+  annualCost: number;
+}
+
 /** Valores monetários: numeric(18,2). Taxas (fração, ex.: 0.035 = 3,5%): numeric(9,6). */
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 });
 const rate = (name: string) => numeric(name, { precision: 9, scale: 6 });
@@ -193,6 +203,8 @@ export const expenseGoals = pgTable("expense_goals", {
   idadeInicio: integer("idade_inicio").notNull(),
   idadeFim: integer("idade_fim"),
   inflacaoExtraAnual: rate("inflacao_extra_anual").notNull().default("0"),
+  /** Degraus por idade: [{ fromAge, factor }] (ex.: gasto discricionário × 0,8 após os 75). */
+  degraus: jsonb("degraus").$type<{ fromAge: number; factor: number }[]>().notNull().default([]),
 });
 
 /** Versionado: nunca sobrescrever; cada alteração cria nova linha com versao+1. */
@@ -209,6 +221,11 @@ export const assumptionSets = pgTable(
     ordemResgate: ordemResgate("ordem_resgate").notNull().default("proporcional"),
     taxaRetirada: rate("taxa_retirada"),
     observacoes: text("observacoes"),
+    /** Premissas do INSS (editáveis, versionadas). */
+    salarioMinimo: money("salario_minimo").notNull().default("1621.00"),
+    tetoInss: money("teto_inss").notNull().default("8475.55"),
+    /** Snapshot dos retornos/custos por classe nesta versão (base do diff). */
+    classes: jsonb("classes").$type<ClassSnapshot[]>().notNull().default([]),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [uniqueIndex("assumption_sets_user_nome_versao").on(t.userId, t.nome, t.versao)],

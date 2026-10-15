@@ -188,7 +188,7 @@ export function OnboardingWizard({
             ))}
             {typeof errors.expenses?.message === "string" && <p className="text-xs text-red-600">{errors.expenses.message}</p>}
             <Button type="button" variant="ghost"
-              onClick={() => expenses.append({ category: "discricionario", monthly: 0, startAge: 60, endAge: null, extraInflation: 0 })}>
+              onClick={() => expenses.append({ category: "discricionario", monthly: 0, startAge: 60, endAge: null, extraInflation: 0, ageSteps: [] })}>
               + Adicionar meta
             </Button>
           </div>

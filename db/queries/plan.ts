@@ -1,10 +1,11 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
-  accounts, assetClasses, assumptionSets, contributionPlans, expenseGoals, inssSettings, profiles,
+  accounts, assetClasses, assumptionSets, contributionPauses, contributionPlans, expenseGoals, extraContributions,
+  incomeSources, inssSettings, profiles, type ClassSnapshot,
 } from "@/db/schema";
-import { DEFAULT_ASSET_CLASSES, DEFAULT_INFLATION, type AssetClassTemplate } from "@/lib/engine";
-import { currentYm, planFormSchema, type PlanData, type PlanForm } from "@/lib/plan";
+import { DEFAULT_ASSET_CLASSES, DEFAULT_INFLATION, DEFAULT_INSS_PARAMS, type AssetClassTemplate } from "@/lib/engine";
+import { currentYm, inssIncreaseSchema, planFormSchema, type PlanData, type PlanForm } from "@/lib/plan";
 import { fromDbMoney, toDbMoney } from "@/lib/money";
 
 const num = (v: string | null | undefined) => (v == null ? 0 : Number(v));
@@ -52,8 +53,11 @@ export async function loadPlan(userId: string): Promise<PlanData | null> {
   const accs = await db.select().from(accounts).where(eq(accounts.userId, userId));
   const [contrib] = await db.select().from(contributionPlans).where(eq(contributionPlans.userId, userId));
   const goals = await db.select().from(expenseGoals).where(eq(expenseGoals.userId, userId));
+  const incomes = await db.select().from(incomeSources).where(eq(incomeSources.userId, userId));
+  const extras = await db.select().from(extraContributions).where(eq(extraContributions.userId, userId));
+  const pauses = await db.select().from(contributionPauses).where(eq(contributionPauses.userId, userId));
   const [assump] = await db
-    .select().from(assumptionSets).where(eq(assumptionSets.userId, userId)).orderBy(desc(assumptionSets.createdAt)).limit(1);
+    .select().from(assumptionSets).where(eq(assumptionSets.userId, userId)).orderBy(desc(assumptionSets.versao)).limit(1);
 
   return {
     startDate: currentYm(),
@@ -75,12 +79,31 @@ export async function loadPlan(userId: string): Promise<PlanData | null> {
     expenses: goals.map((g) => ({
       category: g.categoria, monthly: fromDbMoney(g.valorMensal), startAge: g.idadeInicio, endAge: g.idadeFim,
       extraInflation: num(g.inflacaoExtraAnual),
+      ageSteps: g.degraus ?? [],
     })),
     scenario: assump?.cenario ?? "base",
     inflation: assump ? num(assump.inflacaoLongoPrazo) : DEFAULT_INFLATION,
     method: assump?.metodoRetirada ?? "consumir_ate_horizonte",
     redemptionOrder: assump?.ordemResgate ?? "proporcional",
     classes,
+    fixedWithdrawalRate: num(assump?.taxaRetirada) || 0.04,
+    inssParams: {
+      minimumWage: assump ? fromDbMoney(assump.salarioMinimo) : DEFAULT_INSS_PARAMS.minimumWage,
+      ceiling: assump ? fromDbMoney(assump.tetoInss) : DEFAULT_INSS_PARAMS.ceiling,
+    },
+    inssIncrease: inssIncreaseSchema.safeParse(inss.cenarioAumentoContribuicao).data ?? null,
+    otherIncomes: incomes
+      .filter((i) => i.tipo !== "inss")
+      .map((i) => ({
+        type: i.tipo as "aluguel" | "trabalho_parcial" | "renda_mais" | "outro",
+        description: i.descricao, monthly: fromDbMoney(i.valorMensalHoje), startAge: i.idadeInicio, endAge: i.idadeFim,
+        realGrowth: num(i.crescimentoReal), taxable: i.tributavel,
+      })),
+    extras: extras.map((e) => ({
+      description: e.descricao, amount: fromDbMoney(e.valor), month: e.mes, year: e.ano, yearly: e.recorrenteAnual,
+    })),
+    pauses: pauses.map((p) => ({ from: p.dataInicio.slice(0, 7), to: p.dataFim.slice(0, 7), reason: p.motivo })),
+    targetAllocation: contrib?.alocacao ?? {},
   };
 }
 
@@ -119,17 +142,12 @@ export async function savePlanForm(userId: string, raw: unknown): Promise<void> 
         incluirNaAposentadoria: a.included,
       })),
     );
-  await db.delete(contributionPlans).where(eq(contributionPlans.userId, userId));
-  if (form.contribution.monthly > 0)
-    await db.insert(contributionPlans).values({
-      userId, valorMensal: toDbMoney(form.contribution.monthly), reajusteRealAnual: String(form.contribution.realGrowth),
-      dataInicio: today, alocacao: {},
-    });
+  await saveContributionPlan(userId, form.contribution);
   await db.delete(expenseGoals).where(eq(expenseGoals.userId, userId));
   await db.insert(expenseGoals).values(
     form.expenses.map((e) => ({
       userId, categoria: e.category, valorMensal: toDbMoney(e.monthly), idadeInicio: e.startAge, idadeFim: e.endAge,
-      inflacaoExtraAnual: String(e.extraInflation),
+      inflacaoExtraAnual: String(e.extraInflation), degraus: e.ageSteps,
     })),
   );
   const existing = await db.select({ id: assumptionSets.id }).from(assumptionSets)
@@ -138,5 +156,30 @@ export async function savePlanForm(userId: string, raw: unknown): Promise<void> 
     await db.insert(assumptionSets).values({
       userId, nome: "Premissas base", versao: 1, inflacaoLongoPrazo: String(DEFAULT_INFLATION),
       observacoes: "Inflação: referência Boletim Focus (BCB). Atualize periodicamente.",
+      classes: classSnapshots(await ensureAssetClasses(userId)),
     });
+}
+
+/** Atualiza o plano de aportes preservando a alocação alvo existente. */
+export async function saveContributionPlan(
+  userId: string,
+  c: { monthly: number; realGrowth: number },
+  allocation?: Record<string, number>,
+) {
+  const db = getDb();
+  const [prev] = await db.select().from(contributionPlans).where(eq(contributionPlans.userId, userId));
+  const alocacao = allocation ?? prev?.alocacao ?? {};
+  await db.delete(contributionPlans).where(eq(contributionPlans.userId, userId));
+  if (c.monthly > 0 || Object.keys(alocacao).length > 0)
+    await db.insert(contributionPlans).values({
+      userId, valorMensal: toDbMoney(c.monthly), reajusteRealAnual: String(c.realGrowth),
+      dataInicio: prev?.dataInicio ?? new Date().toISOString().slice(0, 10), alocacao,
+    });
+}
+
+export function classSnapshots(classes: AssetClassTemplate[]): ClassSnapshot[] {
+  return classes.map((c) => ({
+    id: c.id, name: c.name, pessimista: c.returns.pessimista, base: c.returns.base, otimista: c.returns.otimista,
+    contracted: c.contractedRealRate ?? null, annualCost: c.annualCost,
+  }));
 }
