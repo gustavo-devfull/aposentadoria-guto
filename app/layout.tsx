@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
-      <body className="min-h-screen bg-white text-zinc-900">
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body className="min-h-screen bg-white text-zinc-900" suppressHydrationWarning>
         <nav className="mx-auto flex max-w-5xl flex-wrap gap-x-4 gap-y-1 p-6 pb-0 text-sm">
           <Link href="/dashboard" className="hover:underline">Dashboard</Link>
           <Link href="/simulador" className="hover:underline">Simulador</Link>
