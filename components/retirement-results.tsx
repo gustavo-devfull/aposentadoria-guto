@@ -42,7 +42,7 @@ function DetailTable({ res, input }: { res: SimpleResult; input: SimpleInput }) 
       </thead>
       <tbody>
         {row("Patrimônio na aposentadoria", res.patrimonio, p.patrimonio, yRet, true)}
-        {row("Você terá aportado", res.totalAportado, p.totalAportado, yRet)}
+        {row(`Aportes até os ${res.retirementAge}`, res.totalAportado, p.totalAportado, yRet)}
         {section(bridge ? `Renda mensal dos ${res.retirementAge} aos ${input.inssStartAge}` : "Renda mensal dos investimentos")}
         {row("Vivendo só dos juros", res.rendaJuros, p.rendaJuros, yRet)}
         {row(`Consumindo até ${input.horizonAge}`, res.rendaConsumo, p.rendaConsumo, yRet)}

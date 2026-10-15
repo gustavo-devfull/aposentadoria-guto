@@ -45,6 +45,17 @@ describe("simulador simples", () => {
     expect(r.rendaJuros).toBeCloseTo(0, 6);
   });
 
+  it("aporte só até a idade de aposentadoria; depois, só saques", () => {
+    const a60 = simulateRetirement(base, 60), a65 = simulateRetirement(base, 65);
+    expect(a60.totalAportado).toBe(2_000 * 12 * 10);
+    expect(a65.totalAportado).toBe(2_000 * 12 * 15);
+    // sem saque nenhum (horizonte = aposentadoria) o saldo depois dos 60 só renderia — com saque, cai todo ano
+    const pts = wealthByAge(base, [60]);
+    for (let age = 61; age <= 90; age++) {
+      expect(pts.find((p) => p.age === age)!.a60!).toBeLessThan(pts.find((p) => p.age === age - 1)!.a60! + 1);
+    }
+  });
+
   it("gráfico acumula até a aposentadoria e zera no horizonte", () => {
     const pts = wealthByAge(base, [60, 65]);
     expect(pts[0]).toMatchObject({ age: 50, a60: 100_000, a65: 100_000 });

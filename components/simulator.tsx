@@ -57,7 +57,7 @@ export function Simulator({ initial, hasPlan, canSave = true }: { initial: PlanI
                 <Input id="nasc" type="date" value={plan.birthDate} onChange={(e) => set("birthDate")(e.target.value)} />
               </Field>
               <MoneyField label="Investido hoje" value={plan.invested} onChange={set("invested")} />
-              <MoneyField label="Aporte mensal" value={plan.monthly} onChange={set("monthly")} hint="Corrigido pela inflação todo ano." />
+              <MoneyField label="Aporte mensal" value={plan.monthly} onChange={set("monthly")} hint="Até a aposentadoria (60 ou 65). Corrigido pela inflação." />
             </Section>
 
             <Section title="Rendimento">
