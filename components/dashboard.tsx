@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card } from "@/components/ui";
+import { WealthChart } from "@/components/wealth-chart";
 import { runSimulation, type SimulationResult } from "@/lib/engine";
 import { formatBRL, formatPercent } from "@/lib/format";
 import { currentAge, monthsUntilAge, planToInput, toDisplay, trafficLight, type PlanData } from "@/lib/plan";
@@ -12,7 +12,6 @@ const LIGHT = {
   amarelo: { cls: "bg-amber-100 text-amber-800 border-amber-300", label: "Atenção" },
   vermelho: { cls: "bg-red-100 text-red-800 border-red-300", label: "Insuficiente" },
 } as const;
-const COLORS = ["#2563eb", "#ea580c", "#16a34a"];
 
 function Row({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -37,27 +36,6 @@ export function Dashboard({ plan }: { plan: PlanData }) {
   const fmt = (real: number, age: number) => formatBRL(toDisplay(plan, real, monthsUntilAge(plan, age), nominal));
   const sub = (real: number, age: number) =>
     nominal ? `${formatBRL(real)} em R$ de hoje` : `${formatBRL(toDisplay(plan, real, monthsUntilAge(plan, age), true))} nominal`;
-
-  const chartData = useMemo(() => {
-    const byAge = new Map<number, Record<string, number>>();
-    for (const { age, res } of results) {
-      for (const row of res.tabelaAnual) {
-        const rec = byAge.get(row.age) ?? { age: row.age };
-        rec[`a${age}`] = Math.round(nominal ? row.closing.nominal : row.closing.real);
-        byAge.set(row.age, rec);
-      }
-    }
-    return [...byAge.values()].sort((a, b) => a.age! - b.age!);
-  }, [results, nominal]);
-
-  const ticks = useMemo(() => {
-    const first = chartData[0]?.age ?? 0;
-    const last = chartData.at(-1)?.age ?? first;
-    const t = [first];
-    for (let a = Math.ceil((first + 1) / 5) * 5; a < last; a += 5) t.push(a);
-    t.push(last);
-    return t;
-  }, [chartData]);
 
   return (
     <div className="space-y-6">
@@ -112,29 +90,7 @@ export function Dashboard({ plan }: { plan: PlanData }) {
         })}
       </div>
 
-      <Card title={`Evolução do patrimônio (${nominal ? "nominal" : "R$ de hoje"})`}>
-        <div className="h-80 w-full" data-testid="chart">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ left: 8, right: 16, top: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="age" type="number" domain={["dataMin", "dataMax"]} ticks={ticks} />
-              <YAxis tickFormatter={(v: number) => `${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`} width={64} />
-              <Tooltip formatter={(v) => formatBRL(Number(v))} labelFormatter={(l) => `Idade ${l}`} />
-              <Legend />
-              {results.map(({ age }, i) => (
-                <Area key={age} type="monotone" dataKey={`a${age}`} name={`Aposentando aos ${age}`}
-                  stroke={COLORS[i % COLORS.length]} fill={COLORS[i % COLORS.length]} fillOpacity={0.15} />
-              ))}
-              {results.map(({ age }) => (
-                <ReferenceLine key={`r${age}`} x={age} stroke="#52525b" strokeDasharray="4 4"
-                  label={{ value: `Apos. ${age}`, position: "top", fontSize: 11 }} />
-              ))}
-              <ReferenceLine x={plan.inss.startAge} stroke="#16a34a" strokeDasharray="2 4"
-                label={{ value: "INSS", position: "insideBottomRight", fontSize: 11, fill: "#16a34a" }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+      <WealthChart results={results} nominal={nominal} inssStartAge={plan.inss.startAge} />
     </div>
   );
 }

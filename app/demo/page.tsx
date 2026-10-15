@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import { Dashboard } from "@/components/dashboard";
+import { Simulator } from "@/components/simulator";
 import { defaultPlanForm, withPlanDefaults } from "@/lib/plan";
 
 export const dynamic = "force-dynamic";
 
 /** Dashboard com dados fictícios, sem login nem banco. Desligado em produção. */
-export default function DemoPage() {
+export default async function DemoPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const { view } = await searchParams;
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO !== "1") notFound();
   const form = defaultPlanForm();
   const plan = withPlanDefaults(
@@ -22,7 +24,7 @@ export default function DemoPage() {
   return (
     <div className="space-y-4">
       <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">Dados fictícios de demonstração.</p>
-      <Dashboard plan={plan} />
+      {view === "simulador" ? <Simulator plan={plan} saved={[]} canSave={false} /> : <Dashboard plan={plan} />}
     </div>
   );
 }
