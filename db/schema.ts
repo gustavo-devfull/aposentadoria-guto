@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   boolean,
   date,
   index,
@@ -102,6 +103,8 @@ export const profiles = pgTable("profiles", {
   dataNascimento: date("data_nascimento").notNull(),
   horizonteIdade: integer("horizonte_idade").notNull().default(95),
   idadesAlvo: integer("idades_alvo").array().notNull().default([60, 65]),
+  /** Simulação usada como "plano" no acompanhamento mensal. */
+  simulacaoReferenciaId: uuid("simulacao_referencia_id").references((): AnyPgColumn => simulations.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

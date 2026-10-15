@@ -11,12 +11,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <body className="min-h-screen bg-white text-zinc-900">
-        <nav className="mx-auto flex max-w-5xl gap-4 p-6 pb-0 text-sm">
+        <nav className="mx-auto flex max-w-5xl flex-wrap gap-x-4 gap-y-1 p-6 pb-0 text-sm">
           <Link href="/dashboard" className="hover:underline">Dashboard</Link>
           <Link href="/simulador" className="hover:underline">Simulador</Link>
           <Link href="/carteira" className="hover:underline">Carteira</Link>
           <Link href="/renda-gastos" className="hover:underline">Renda e gastos</Link>
           <Link href="/premissas" className="hover:underline">Premissas</Link>
+          <Link href="/acompanhamento" className="hover:underline">Acompanhamento</Link>
+          <Link href="/tabela-anual" className="hover:underline">Tabela anual</Link>
+          <Link href="/comparar" className="hover:underline">Comparar</Link>
           <Link href="/onboarding" className="hover:underline">Plano</Link>
         </nav>
         <main className="mx-auto max-w-5xl p-6">{children}</main>

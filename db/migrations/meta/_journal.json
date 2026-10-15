@@ -15,6 +15,13 @@
       "when": 1792083498957,
       "tag": "0001_late_scourge",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792083905937,
+      "tag": "0002_striped_kabuki",
+      "breakpoints": true
     }
   ]
 }
