@@ -17,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/carteira" className="hover:underline">Carteira</Link>
           <Link href="/renda-gastos" className="hover:underline">Renda e gastos</Link>
           <Link href="/premissas" className="hover:underline">Premissas</Link>
+          <Link href="/monte-carlo" className="hover:underline">Monte Carlo</Link>
           <Link href="/acompanhamento" className="hover:underline">Acompanhamento</Link>
           <Link href="/tabela-anual" className="hover:underline">Tabela anual</Link>
           <Link href="/comparar" className="hover:underline">Comparar</Link>

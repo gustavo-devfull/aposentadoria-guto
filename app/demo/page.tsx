@@ -4,6 +4,7 @@ import { Simulator } from "@/components/simulator";
 import { PortfolioView } from "@/components/portfolio-view";
 import { IncomeExpenseView } from "@/components/income-expense-view";
 import { AssumptionsView } from "@/components/assumptions-view";
+import { MonteCarloView } from "@/components/monte-carlo-view";
 import { AnnualTableView } from "@/components/annual-table-view";
 import { CompareView } from "@/components/compare-view";
 import { TrackingView } from "@/components/tracking-view";
@@ -61,6 +62,7 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
         : view === "carteira" ? <PortfolioView plan={plan} />
         : view === "renda" ? <IncomeExpenseView plan={plan} />
         : view === "acompanhamento" ? <TrackingView accounts={accs.map((a) => ({ id: a.id, name: a.name, balance: a.balance, included: a.included }))} snapshots={snaps} tracking={tracking} simulations={[{ id: "s1", nome: "Plano aos 60", retirementAge: 60 }]} referenceId="s1" referenceName="Plano aos 60" canSave={false} />
+        : view === "montecarlo" ? <MonteCarloView plan={plan} />
         : view === "tabela" ? <AnnualTableView plan={plan} />
         : view === "comparar" ? <CompareView sims={[mkSim("a", "Aos 60", 60, 4000), mkSim("b", "Aos 65", 65, 4000), mkSim("c", "Aos 65 + aporte", 65, 6000)]} />
         : view === "premissas" ? <AssumptionsView versions={[v2, v1]} />

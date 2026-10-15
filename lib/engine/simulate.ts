@@ -200,8 +200,16 @@ function applyWithdrawal(alloc: Alloc) {
   }
 }
 
+export interface SimulateOptions {
+  /**
+   * Retornos reais anuais (já líquidos de custo) por ano de simulação e por classe, na ordem de `input.classes`.
+   * Quando informado, substitui o retorno constante (usado pelo Monte Carlo).
+   */
+  annualReturns?: number[][];
+}
+
 /** Simulação mensal completa (determinística, em reais de hoje). */
-export function simulate(input: SimulationInput): RunSummary {
+export function simulate(input: SimulationInput, opts: SimulateOptions = {}): RunSummary {
   const ageMonths0 = ageInMonths(input.birthDate, input.startDate);
   const horizonMonths = Math.round(input.horizonAge * 12) - ageMonths0;
   if (horizonMonths <= 0) throw new Error("Horizonte já ultrapassado");
@@ -230,8 +238,19 @@ export function simulate(input: SimulationInput): RunSummary {
   let atRetirement = states.map((s) => ({ classId: s.cls.id, balance: s.bal, basis: s.basis }));
   let fixedAnnualGross = 0;
 
+  let rateYear = -1;
   for (let m = 0; m < horizonMonths; m++) {
     const ageM = ageMonths0 + m;
+    if (opts.annualReturns) {
+      const y = Math.floor(m / 12);
+      if (y !== rateYear) {
+        rateYear = y;
+        const yearReturns = opts.annualReturns[y] ?? opts.annualReturns.at(-1) ?? [];
+        states.forEach((st, i) => {
+          st.rm = monthlyRate(Math.max(-0.95, yearReturns[i] ?? netAnnualReturn(st.cls)));
+        });
+      }
+    }
     const opening = states.reduce((s, c) => s + c.bal, 0);
     const fStart = nominalFactor(m, input.inflation);
     const fEnd = nominalFactor(m + 1, input.inflation);

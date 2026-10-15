@@ -18,3 +18,14 @@ Convenções: aporte no **fim** do mês; saque no **início** do mês, rendiment
 - `rendaSustentavel`: renda total mensal (R$ de hoje, na idade de aposentadoria) — fator sobre as metas de gasto por bisseção; rendas externas (INSS) permanecem fixas.
 - Pausas também suspendem aportes extras.
 - INSS: aproximação (média de todos os salários × (60% + 2% por ano acima de 20), entre mínimo e teto). Sempre conferir no Meu INSS/CNIS.
+
+## Telas
+`/dashboard` (60 vs 65) · `/simulador` · `/carteira` · `/renda-gastos` · `/premissas` (versionadas, com diff) · `/acompanhamento` (realizado vs projetado) · `/tabela-anual` (CSV) · `/comparar` · `/monte-carlo`.
+`/demo?view=…` mostra as telas com dados fictícios, sem login nem banco (em produção só com `ENABLE_DEMO=1`).
+
+## Monte Carlo (`lib/engine/montecarlo.ts`)
+Roda o **mesmo** motor com retornos anuais aleatórios por trajetória. Média = cenário base; volatilidade e correlação editáveis (padrão: risco×risco 0,5; conservador×conservador 0,2; misto 0,1). Normal ou lognormal (média e DP preservados). PRNG `mulberry32` com seed → resultado reprodutível. Executa em Web Worker (`lib/mc/mc.worker.ts`). Saídas: P(durar até o horizonte), P(renda atendida em todos os meses), faixas P10/P50/P90 e distribuição da idade de esgotamento.
+
+## Testes
+`npm test` (Vitest: motor, regras de tela, Monte Carlo) · `npm run e2e` (Playwright sobre `/demo`; `PW_CHROMIUM=/caminho/chromium` se necessário).
+O fluxo autenticado de ponta a ponta exige `DATABASE_URL` e credenciais de teste do Auth.js.
