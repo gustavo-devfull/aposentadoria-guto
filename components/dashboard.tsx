@@ -9,7 +9,7 @@ import { toSimpleInput, type PlanInput } from "@/lib/plan";
 
 const linkBtn = "inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium transition";
 
-export function Dashboard({ plan, editHref = "/simulador" }: { plan: PlanInput | null; editHref?: string }) {
+export function Dashboard({ plan, editHref = "/simulador", monthlyHref = "/mes-a-mes" }: { plan: PlanInput | null; editHref?: string; monthlyHref?: string }) {
   const input = useMemo(() => (plan ? toSimpleInput(plan) : null), [plan]);
 
   if (!plan || !input) {
@@ -36,7 +36,10 @@ export function Dashboard({ plan, editHref = "/simulador" }: { plan: PlanInput |
           <h1 className="text-2xl font-semibold tracking-tight">Meu plano</h1>
           <p className="mt-1 text-sm text-muted">Sua renda mensal se aposentar aos 60 ou aos 65.</p>
         </div>
-        <Link href={editHref} className={`${linkBtn} border border-line bg-surface hover:bg-subtle`}>Ajustar no simulador</Link>
+        <div className="flex gap-2">
+          <Link href={monthlyHref} className={`${linkBtn} border border-line bg-surface hover:bg-subtle`}>Ver mês a mês</Link>
+          <Link href={editHref} className={`${linkBtn} border border-line bg-surface hover:bg-subtle`}>Ajustar no simulador</Link>
+        </div>
       </div>
       <Card>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6" data-testid="plan-summary">

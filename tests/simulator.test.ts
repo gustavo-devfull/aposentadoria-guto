@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ageOn, defaultPlan, MINIMUM_WAGE, planInputSchema, toSimpleInput } from "@/lib/plan";
-import { annuityPayment, futureValue, inflationFactor, nominalContributions, realMonthlyRate, simulateRetirement, wealthByAge, type SimpleInput } from "@/lib/simulator";
+import { annuityPayment, futureValue, inflationFactor, nominalContributions, realMonthlyRate, monthlySchedule, simulateRetirement, wealthByAge, type SimpleInput } from "@/lib/simulator";
 
 const base: SimpleInput = {
   currentAge: 50, invested: 100_000, monthly: 2_000, annualRate: 0.12, inflation: 0.04,
@@ -65,6 +65,48 @@ describe("simulador simples", () => {
     expect(at(90).a65).toBeLessThan(1);
   });
 
+});
+
+describe("mês a mês", () => {
+  const today = new Date("2026-10-15T12:00:00Z");
+  const sched = (age: number, mode: "consumo" | "juros") => monthlySchedule(base, age, mode, today);
+
+  it("acumula até a aposentadoria e bate com o patrimônio do cartão", () => {
+    const rows = sched(60, "consumo");
+    const res = simulateRetirement(base, 60);
+    expect(rows).toHaveLength((90 - 50) * 12);
+    expect(rows[0]).toMatchObject({ month: 1, date: "2026-11", phase: "acumulacao", aporte: 2000, saque: 0 });
+    expect(rows[res.months - 1]!.saldoFinal).toBeCloseTo(res.patrimonio, 4);
+    expect(rows[res.months]!).toMatchObject({ phase: "aposentadoria", aporte: 0 });
+    expect(rows.reduce((s, r) => s + r.aporte, 0)).toBe(res.totalAportado);
+  });
+
+  it("consumindo: saque constante zera o saldo no horizonte", () => {
+    const rows = sched(65, "consumo");
+    const res = simulateRetirement(base, 65);
+    const after = rows.filter((r) => r.phase === "aposentadoria");
+    expect(after.every((r) => Math.abs(r.saque - res.rendaConsumo) < 1e-6)).toBe(true);
+    expect(rows.at(-1)!.saldoFinal).toBeLessThan(0.01);
+  });
+
+  it("só dos juros: o patrimônio fica intacto", () => {
+    const rows = sched(60, "juros");
+    const res = simulateRetirement(base, 60);
+    for (const r of rows.filter((x) => x.phase === "aposentadoria")) expect(r.saldoFinal).toBeCloseTo(res.patrimonio, 4);
+  });
+
+  it("INSS entra no mês em que completa 65; renda = saque + INSS", () => {
+    const rows = sched(60, "consumo");
+    const first = rows.findIndex((r) => r.inss > 0);
+    expect(first).toBe((65 - 50) * 12);
+    expect(rows[first]!.renda).toBeCloseTo(rows[first]!.saque + 1621, 6);
+    expect(rows[first - 1]!.inss).toBe(0);
+  });
+
+  it("fator projetado corrige pela inflação mês a mês", () => {
+    const rows = sched(60, "consumo");
+    expect(rows[11]!.fator).toBeCloseTo(1.04, 10);
+  });
 });
 
 describe("valores projetados (nominais)", () => {
