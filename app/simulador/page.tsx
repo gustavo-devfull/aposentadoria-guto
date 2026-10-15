@@ -1,0 +1,14 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { loadPlan } from "@/db/queries/plan";
+import { Simulator } from "@/components/simulator";
+import { defaultPlan } from "@/lib/plan";
+
+export const dynamic = "force-dynamic";
+
+export default async function SimuladorPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/");
+  const plan = await loadPlan(session.user.id);
+  return <Simulator initial={plan ?? defaultPlan()} hasPlan={plan !== null} />;
+}

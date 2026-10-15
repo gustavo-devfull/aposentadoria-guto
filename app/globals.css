@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/* Tokens de cor — o tema escuro segue a preferência do sistema. */
+:root {
+  --bg: #f6f6f3;
+  --surface: #ffffff;
+  --subtle: #f2f2ee;
+  --fg: #18181b;
+  --muted: #6b6b73;
+  --line: #e5e5e0;
+  --accent: #0f766e;
+  --accent-hover: #115e59;
+  --accent-fg: #ffffff;
+  --accent-soft: #e7f5f2;
+  --good: #047857;
+  --good-soft: #e3f6ee;
+  --warn-soft: #fdf6e3;
+  --warn-fg: #8a5a00;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d0f0f;
+    --surface: #161919;
+    --subtle: #1d2121;
+    --fg: #f1f2f1;
+    --muted: #9ba3a1;
+    --line: #2a2f2e;
+    --accent: #2dd4bf;
+    --accent-hover: #5eead4;
+    --accent-fg: #062b27;
+    --accent-soft: #10302c;
+    --good: #34d399;
+    --good-soft: #0f2c22;
+    --warn-soft: #2b2410;
+    --warn-fg: #f2c25b;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-fg: var(--warn-fg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-feature-settings: "tnum" 0;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
