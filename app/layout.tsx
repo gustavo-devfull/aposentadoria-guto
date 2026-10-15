@@ -1,30 +1,46 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { auth, signOut } from "@/auth";
+import { AppNav } from "@/components/app-nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Aposentadoria",
-  description: "Simulador e gestor de aposentadoria",
+  description: "Quanto você terá de renda aos 60 ou 65 anos",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+function Logo() {
+  return (
+    <Link href="/" className="flex items-center gap-2 font-semibold">
+      <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-accent-fg">
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" />
+        </svg>
+      </span>
+      Aposentadoria
+    </Link>
+  );
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth().catch(() => null);
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className="min-h-screen bg-white text-zinc-900" suppressHydrationWarning>
-        <nav className="mx-auto flex max-w-5xl flex-wrap gap-x-4 gap-y-1 p-6 pb-0 text-sm">
-          <Link href="/dashboard" className="hover:underline">Dashboard</Link>
-          <Link href="/simulador" className="hover:underline">Simulador</Link>
-          <Link href="/carteira" className="hover:underline">Carteira</Link>
-          <Link href="/renda-gastos" className="hover:underline">Renda e gastos</Link>
-          <Link href="/premissas" className="hover:underline">Premissas</Link>
-          <Link href="/monte-carlo" className="hover:underline">Monte Carlo</Link>
-          <Link href="/acompanhamento" className="hover:underline">Acompanhamento</Link>
-          <Link href="/tabela-anual" className="hover:underline">Tabela anual</Link>
-          <Link href="/comparar" className="hover:underline">Comparar</Link>
-          <Link href="/onboarding" className="hover:underline">Plano</Link>
-        </nav>
-        <main className="mx-auto max-w-5xl p-6">{children}</main>
-        <footer className="mx-auto max-w-5xl border-t p-6 text-xs text-zinc-500">
+      <body className="min-h-screen antialiased" suppressHydrationWarning>
+        <header className="border-b border-line bg-surface/80 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <Logo />
+            <Suspense><AppNav /></Suspense>
+            {session?.user && (
+              <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}>
+                <button type="submit" className="text-sm text-muted hover:text-fg">Sair</button>
+              </form>
+            )}
+          </div>
+        </header>
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+        <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-muted sm:px-6">
           Simulação educativa baseada em premissas. Não constitui recomendação de investimento.
           Confira o benefício oficial no Meu INSS.
         </footer>

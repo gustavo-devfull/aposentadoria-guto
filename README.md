@@ -1,37 +1,34 @@
-# Simulador e Gestor de Aposentadoria
+# Simulador de Aposentadoria
 
-Next.js (App Router) + TypeScript strict + Drizzle/**Supabase Postgres** (`postgres-js`) + Auth.js. Todos os valores do motor são **reais (R$ de hoje)**; o nominal é derivado por `valor × (1+inflação)^(meses/12)`.
+Next.js (App Router) + TypeScript strict + Drizzle/**Supabase Postgres** (`postgres-js`) + Auth.js.
 
-## Comandos
-`npm run test` · `npm run typecheck` · `npm run lint` · `npm run db:generate` · `npm run db:migrate` · `npm run db:seed`
+## A lógica
+Quanto tenho investido hoje + quanto aporto por mês, rendendo a uma taxa de juros até os **60 ou 65 anos** — e quanto isso paga de renda, somado ao **INSS de um salário mínimo a partir dos 65**.
 
-## Motor (`lib/engine/`)
-Funções puras, sem I/O. `parseSimulationInput` (Zod) → `runSimulation` → `SimulationResult`.
-Convenções: aporte no **fim** do mês; saque no **início** do mês, rendimento sobre o que sobra.
+- Tudo em **R$ de hoje**: a taxa nominal vira taxa real descontando a inflação (`(1+taxa)/(1+inflação) − 1`); o aporte é considerado corrigido pela inflação.
+- Aporte no **fim** do mês; saque no **início** do mês.
+- Renda em duas versões: **só dos juros** (o patrimônio fica intacto) e **consumindo o patrimônio** até a idade escolhida.
+- Impostos não são calculados — informe a taxa líquida de IR. Os atalhos de taxa (Poupança, CDI, Pré, IPCA+) são exemplos editáveis.
+- Salário mínimo e inflação padrão ficam em `lib/plan.ts` (`MINIMUM_WAGE`, `DEFAULT_INFLATION`) — atualizar todo ano.
 
-### Decisões de modelagem (revisar!)
-- Cálculo em `number` (double) dentro do motor; `decimal.js` só na fronteira com o banco (`lib/money.ts`) — a bisseção e o Monte Carlo rodam milhares de simulações.
-- Retornos da tabela de cenários são tratados como **já líquidos de custos**; `custo_anual` default 0 e é subtraído se informado.
-- Alíquotas efetivas: renda fixa 15%, ações 15%, FIIs isentos, PGBL 10% sobre o total, VGBL 10% sobre o ganho (editável por classe).
-- `preservar_capital`: saca no máximo o rendimento real do mês (sem erosão); `taxa_fixa`: X% a.a. do saldo, recalculado a cada 12 meses de retirada; ambos reportam meses com renda não atendida.
-- `patrimonioNecessario`: VP dos saques brutos até o horizonte, descontado pelo retorno real médio ponderado da carteira projetada; IR estimado pela razão ganho/saldo na aposentadoria. (Preservar: perpetuidade do maior saque; taxa fixa: maior necessidade anual ÷ taxa.)
-- `rendaSustentavel`: renda total mensal (R$ de hoje, na idade de aposentadoria) — fator sobre as metas de gasto por bisseção; rendas externas (INSS) permanecem fixas.
-- Pausas também suspendem aportes extras.
-- INSS: aproximação (média de todos os salários × (60% + 2% por ano acima de 20), entre mínimo e teto). Sempre conferir no Meu INSS/CNIS.
+Cálculo: `lib/simulator.ts` (funções puras). Plano e validação (Zod): `lib/plan.ts`.
 
 ## Telas
-`/dashboard` (60 vs 65) · `/simulador` · `/carteira` · `/renda-gastos` · `/premissas` (versionadas, com diff) · `/acompanhamento` (realizado vs projetado) · `/tabela-anual` (CSV) · `/comparar` · `/monte-carlo`.
-`/demo?view=…` mostra as telas com dados fictícios, sem login nem banco (em produção só com `ENABLE_DEMO=1`).
+`/dashboard` (meu plano: 60 × 65) · `/simulador` (testar variações, salvar como plano ou como cenário) · `/comparar` (2 a 3 cenários lado a lado).
+`/demo?view=simulador|comparar` mostra as telas com dados fictícios, sem login nem banco (em produção só com `ENABLE_DEMO=1`).
 
-## Monte Carlo (`lib/engine/montecarlo.ts`)
-Roda o **mesmo** motor com retornos anuais aleatórios por trajetória. Média = cenário base; volatilidade e correlação editáveis (padrão: risco×risco 0,5; conservador×conservador 0,2; misto 0,1). Normal ou lognormal (média e DP preservados). PRNG `mulberry32` com seed → resultado reprodutível. Executa em Web Worker (`lib/mc/mc.worker.ts`). Saídas: P(durar até o horizonte), P(renda atendida em todos os meses), faixas P10/P50/P90 e distribuição da idade de esgotamento.
+## Comandos
+`npm run test` · `npm run typecheck` · `npm run lint` · `npm run e2e` · `npm run db:generate` · `npm run db:migrate`
 
 ## Testes
-`npm test` (Vitest: motor, regras de tela, Monte Carlo) · `npm run e2e` (Playwright sobre `/demo`; `PW_CHROMIUM=/caminho/chromium` se necessário).
-O fluxo autenticado de ponta a ponta exige `DATABASE_URL` e credenciais de teste do Auth.js.
+`npm test` (Vitest: cálculo, plano e integração com Postgres real em memória via PGlite, incluindo a conversão do modelo antigo).
+`npm run e2e` (Playwright sobre `/demo`; `PW_CHROMIUM="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"` se o Chromium do Playwright não estiver instalado).
 
 ## Banco (Supabase)
-1. `cp .env.example .env` e preencha `DATABASE_URL` (Transaction pooler, 6543) e `DIRECT_URL` (Session pooler, 5432) com a senha do banco.
-2. `npm run db:migrate` — aplica as 4 migrations (a `0003` ativa **RLS** em todas as tabelas: a API pública do Supabase fica sem acesso; só o servidor do app lê/grava, sempre filtrando por `user_id`).
+Tabelas do app: `plans` (um plano por usuário) e `scenarios` (cenários salvos), mais as do Auth.js. Todas com **RLS** ativado sem políticas: a API pública do Supabase fica sem acesso; só o servidor do app lê/grava, sempre filtrando por `user_id`.
+
+1. `cp .env.example .env` e preencha `DATABASE_URL` (Transaction pooler, 6543) e `DIRECT_URL` (Session pooler, 5432).
+2. `npm run db:migrate`.
 3. Na Vercel, defina `DATABASE_URL` (a do pooler transacional) e as demais variáveis do `.env.example`.
-Os testes de integração (`tests/db.integration.test.ts`) rodam as migrations num Postgres real em memória (PGlite).
+
+**Modelo antigo:** as tabelas do motor anterior (carteira, metas de gasto, premissas, acompanhamento…) continuam no banco, declaradas em `db/legacy-schema.ts`, mas o app não as usa mais — a migration `0004` converteu os planos para `plans`. Para apagá-las, remova as definições desse arquivo e rode `npm run db:generate`.

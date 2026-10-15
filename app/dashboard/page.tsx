@@ -8,7 +8,5 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
-  const plan = await loadPlan(session.user.id);
-  if (!plan) redirect("/onboarding");
-  return <Dashboard plan={plan} />;
+  return <Dashboard plan={await loadPlan(session.user.id)} />;
 }
