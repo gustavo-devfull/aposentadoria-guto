@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import * as schema from "@/db/schema";
 import { defaultPlan } from "@/lib/plan";
@@ -62,7 +63,31 @@ describe("migrations", () => {
   });
 });
 
+describe("aportes pontuais (0005)", () => {
+  it("planos existentes ganham a coluna com lista vazia", async () => {
+    const old = new PGlite();
+    for (const f of ["0000_married_diamondback", "0001_late_scourge", "0002_striped_kabuki", "0003_enable_rls", "0004_simple_plans", "0005_aportes_pontuais"]) {
+      for (const stmt of readFileSync(`db/migrations/${f}.sql`, "utf8").split("--> statement-breakpoint")) if (stmt.trim()) await old.exec(stmt);
+      if (f === "0004_simple_plans") {
+        await old.exec("insert into users (id, email) values ('x', 'x@x.com'); insert into plans (user_id, data_nascimento) values ('x', '1975-10-15');");
+      }
+    }
+    const { rows } = await old.query<{ aportes_pontuais: unknown }>("select aportes_pontuais from plans");
+    expect(rows[0]!.aportes_pontuais).toEqual([]);
+  });
+});
+
 describe("plano", () => {
+  it("grava e recarrega os aportes pontuais", async () => {
+    const p = { ...defaultPlan(), birthDate: "1975-10-15", lumpSums: [{ amount: 50000.5, date: "2028-06" }, { amount: 10000, date: "2030-12" }] };
+    await plan.savePlan(B, p);
+    expect((await plan.loadPlan(B))!.lumpSums).toEqual(p.lumpSums);
+    await plan.savePlan(B, { ...p, lumpSums: [] });
+    expect((await plan.loadPlan(B))!.lumpSums).toEqual([]);
+    await expect(plan.savePlan(B, { ...p, lumpSums: [{ amount: 1, date: "junho" }] })).rejects.toThrow();
+    await db.delete(schema.plans).where(eq(schema.plans.userId, B)); // mantém o teste "usuário B sem plano"
+  });
+
   it("usuário sem plano", async () => {
     expect(await plan.loadPlan(A)).toBeNull();
   });

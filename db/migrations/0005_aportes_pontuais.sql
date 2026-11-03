@@ -1,0 +1,1 @@
+ALTER TABLE "plans" ADD COLUMN "aportes_pontuais" jsonb DEFAULT '[]'::jsonb NOT NULL;

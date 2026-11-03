@@ -36,6 +36,13 @@
       "when": 1792105246875,
       "tag": "0004_simple_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793712659510,
+      "tag": "0005_aportes_pontuais",
+      "breakpoints": true
     }
   ]
 }

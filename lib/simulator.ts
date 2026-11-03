@@ -8,6 +8,12 @@
  * Convenção do motor: aporte no fim do mês. Impostos não são calculados — use a taxa líquida de IR.
  */
 
+/** Aporte pontual: `amount` (R$ de hoje) entrando no fim do mês `month` (0 = este mês, já; 1 = daqui a 1 mês…). */
+export interface LumpSum {
+  amount: number;
+  month: number;
+}
+
 export interface SimpleInput {
   currentAge: number;
   /** Patrimônio investido hoje (R$). */
@@ -23,6 +29,8 @@ export interface SimpleInput {
   inssStartAge: number;
   /** Idade até a qual a renda deve durar no modo "consumindo o patrimônio". */
   horizonAge: number;
+  /** Aportes pontuais (além do mensal). Só contam até a aposentadoria. */
+  lumpSums?: LumpSum[];
 }
 
 export interface SimpleResult {
@@ -66,6 +74,21 @@ export function nominalContributions(pmt: number, inflation: number, n: number):
   return (pmt * g * (Math.pow(g, n) - 1)) / (g - 1);
 }
 
+/** Aportes pontuais que entram até `months` meses (inclusive); mês < 0 e depois da aposentadoria não contam. */
+export function lumpsWithin(input: Pick<SimpleInput, "lumpSums">, months: number): LumpSum[] {
+  return (input.lumpSums ?? []).filter((l) => l.amount > 0 && l.month >= 0 && l.month <= months);
+}
+
+/** Soma dos aportes pontuais que caem exatamente no mês `k`. */
+export function lumpAt(input: Pick<SimpleInput, "lumpSums">, k: number): number {
+  return (input.lumpSums ?? []).reduce((t, l) => (l.month === k && l.amount > 0 ? t + l.amount : t), 0);
+}
+
+/** Valor futuro, daqui a `n` meses, dos aportes pontuais (entram no fim do mês; mês 0 rende desde já). */
+export function lumpSumsFutureValue(lumps: LumpSum[], r: number, n: number): number {
+  return lumps.reduce((t, l) => t + l.amount * Math.pow(1 + r, n - l.month), 0);
+}
+
 /** Taxa real mensal equivalente a uma taxa nominal anual e uma inflação anual. */
 export function realMonthlyRate(annualRate: number, inflation: number): number {
   return Math.pow((1 + annualRate) / (1 + inflation), 1 / 12) - 1;
@@ -88,7 +111,8 @@ export function annuityPayment(pv: number, r: number, n: number): number {
 export function simulateRetirement(input: SimpleInput, retirementAge: number): SimpleResult {
   const r = realMonthlyRate(input.annualRate, input.inflation);
   const months = Math.max(0, Math.round((retirementAge - input.currentAge) * 12));
-  const patrimonio = futureValue(input.invested, input.monthly, r, months);
+  const lumps = lumpsWithin(input, months);
+  const patrimonio = futureValue(input.invested, input.monthly, r, months) + lumpSumsFutureValue(lumps, r, months);
   const payoutMonths = Math.max(0, Math.round((input.horizonAge - retirementAge) * 12));
   // Saque no início do mês: P·r/(1+r) é o máximo que mantém o patrimônio exatamente intacto.
   const rendaJuros = Math.max(0, (patrimonio * r) / (1 + r));
@@ -101,7 +125,7 @@ export function simulateRetirement(input: SimpleInput, retirementAge: number): S
     retirementAge,
     months,
     patrimonio,
-    totalAportado: input.monthly * months,
+    totalAportado: input.monthly * months + lumps.reduce((t, l) => t + l.amount, 0),
     rendaJuros,
     rendaConsumo,
     inss: input.inssBenefit,
@@ -109,7 +133,9 @@ export function simulateRetirement(input: SimpleInput, retirementAge: number): S
     anosAteInss,
     projetado: {
       patrimonio: patrimonio * fRet,
-      totalAportado: nominalContributions(input.monthly, input.inflation, months),
+      totalAportado:
+        nominalContributions(input.monthly, input.inflation, months) +
+        lumps.reduce((t, l) => t + l.amount * inflationFactor(input.inflation, l.month / 12), 0),
       rendaJuros: rendaJuros * fRet,
       rendaConsumo: rendaConsumo * fRet,
       inss: input.inssBenefit * fInss,
@@ -131,7 +157,7 @@ export function wealthByAge(input: SimpleInput, retirementAges: number[], nomina
   const points: ChartPoint[] = [];
   const series = retirementAges.map((age) => {
     const res = simulateRetirement(input, age);
-    return { age, saque: res.rendaConsumo, balance: input.invested };
+    return { age, saque: res.rendaConsumo, balance: input.invested + lumpAt(input, 0) };
   });
   points.push({ age: start, ...Object.fromEntries(series.map((s) => [`a${s.age}`, s.balance])) });
   for (let age = start + 1; age <= input.horizonAge; age++) {
@@ -139,7 +165,8 @@ export function wealthByAge(input: SimpleInput, retirementAges: number[], nomina
     for (const s of series) {
       for (let m = 0; m < 12; m++) {
         const monthAge = age - 1 + m / 12;
-        if (monthAge < s.age) s.balance = s.balance * (1 + r) + input.monthly;
+        const k = (age - 1 - start) * 12 + m + 1; // mês corrido a partir de hoje (1 = próximo mês)
+        if (monthAge < s.age) s.balance = s.balance * (1 + r) + input.monthly + lumpAt(input, k);
         else s.balance = Math.max(0, (s.balance - s.saque) * (1 + r));
       }
       point[`a${s.age}`] = Math.round(s.balance * (nominal ? inflationFactor(input.inflation, age - start) : 1));
@@ -185,13 +212,13 @@ export function monthlySchedule(input: SimpleInput, retirementAge: number, mode:
   const y0 = today.getUTCFullYear(), m0 = today.getUTCMonth();
   const gm = Math.pow(1 + input.inflation, 1 / 12);
   const rows: MonthRow[] = [];
-  let saldo = input.invested;
+  let saldo = input.invested + lumpAt(input, 0);
   for (let k = 1; k <= total; k++) {
     const d = new Date(Date.UTC(y0, m0 + k, 1));
     const retired = k > res.months;
     const saldoInicial = saldo;
     const saque = retired ? Math.min(saqueMensal, saldo) : 0;
-    const aporte = retired ? 0 : input.monthly;
+    const aporte = retired ? 0 : input.monthly + lumpAt(input, k);
     const juros = (saldo - saque) * r;
     saldo = saldo - saque + juros + aporte;
     if (Math.abs(saldo) < 0.005) saldo = 0;

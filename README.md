@@ -7,6 +7,7 @@ Quanto tenho investido hoje + quanto aporto por mês, rendendo a uma taxa de jur
 
 - Tudo em **R$ de hoje**: a taxa nominal vira taxa real descontando a inflação (`(1+taxa)/(1+inflação) − 1`); o aporte é considerado corrigido pela inflação.
 - Aporte no **fim** do mês; saque no **início** do mês.
+- **Aportes pontuais** (bônus, venda de um bem): valor em R$ de hoje, num mês escolhido, corrigido pela inflação como o aporte mensal; entram no fim do mês e só contam até a aposentadoria (o simulador avisa quando um aporte cai depois dela, ou só vale para os 65).
 - Renda em duas versões: **só dos juros** (o patrimônio fica intacto) e **consumindo o patrimônio** até a idade escolhida.
 - Impostos não são calculados — informe a taxa líquida de IR. Os atalhos de taxa (Poupança, CDI, Pré, IPCA+) são exemplos editáveis.
 - Salário mínimo e inflação padrão ficam em `lib/plan.ts` (`MINIMUM_WAGE`, `DEFAULT_INFLATION`) — atualizar todo ano.

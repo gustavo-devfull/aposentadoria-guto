@@ -55,3 +55,20 @@ test("comparar destaca as premissas que diferem", async ({ page }) => {
   await expect(page.getByTestId("compare-results")).toContainText("Patrimônio aos 65");
   await expect(page.getByTestId("compare-results").locator(".bg-good-soft").first()).toBeVisible();
 });
+
+test("simulador: aporte pontual altera o resultado, avisa quando não conta e pode ser removido", async ({ page }) => {
+  await page.goto("/demo?view=simulador");
+  const kpis = page.getByTestId("kpis");
+  const before = await kpis.innerText();
+  await page.getByRole("button", { name: "+ Adicionar aporte pontual" }).click();
+  await expect(page.getByTestId("lump-sum")).toHaveCount(1);
+  await expect(kpis).not.toHaveText(before);
+  const withTen = await kpis.innerText();
+  await page.getByLabel("Aporte pontual 1", { exact: true }).fill("200000");
+  await expect(kpis).not.toHaveText(withTen);
+  await page.getByLabel("Mês do aporte pontual 1", { exact: true }).fill("2060-01");
+  await expect(page.getByTestId("lump-sum")).toContainText("Depois da aposentadoria");
+  await page.getByRole("button", { name: "Remover aporte pontual 1", exact: true }).click();
+  await expect(page.getByTestId("lump-sum")).toHaveCount(0);
+  await expect.poll(() => kpis.innerText()).toBe(before); // volta exatamente ao resultado sem o aporte
+});

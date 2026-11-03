@@ -46,6 +46,7 @@ export function Dashboard({ plan, editHref = "/simulador", monthlyHref = "/mes-a
           {item("Idade", `${input.currentAge} anos`)}
           {item("Investido hoje", formatBRL0(plan.invested))}
           {item("Aporte mensal", formatBRL0(plan.monthly))}
+          {plan.lumpSums.length > 0 && item("Aportes pontuais", `${plan.lumpSums.length} · ${formatBRL0(plan.lumpSums.reduce((t, l) => t + l.amount, 0))}`)}
           {item("Taxa de juros", `${formatPercent(plan.annualRate)} a.a.`)}
           {item("Inflação", `${formatPercent(plan.inflation)} a.a.`)}
           {item(`INSS aos ${plan.inssStartAge}`, formatBRL0(plan.inssBenefit))}

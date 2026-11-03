@@ -62,6 +62,8 @@ export const plans = pgTable("plans", {
   inssBeneficio: money("inss_beneficio").notNull().default("1621.00"),
   inssIdade: integer("inss_idade").notNull().default(65),
   horizonteIdade: integer("horizonte_idade").notNull().default(90),
+  /** Aportes pontuais: [{ amount (R$ de hoje), date ("AAAA-MM") }]. */
+  aportesPontuais: jsonb("aportes_pontuais").$type<{ amount: number; date: string }[]>().notNull().default([]),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageOn, defaultPlan, MINIMUM_WAGE, planInputSchema, toSimpleInput } from "@/lib/plan";
+import { ageOn, defaultPlan, lumpSumCountsFor, MINIMUM_WAGE, planInputSchema, toSimpleInput } from "@/lib/plan";
 import { annuityPayment, futureValue, inflationFactor, nominalContributions, realMonthlyRate, monthlySchedule, simulateRetirement, wealthByAge, type SimpleInput } from "@/lib/simulator";
 
 const base: SimpleInput = {
@@ -163,5 +163,83 @@ describe("plano", () => {
   it("rejeita valores inválidos", () => {
     expect(planInputSchema.safeParse({ ...defaultPlan(), invested: -1 }).success).toBe(false);
     expect(planInputSchema.safeParse({ ...defaultPlan(), birthDate: "15/10/1975" }).success).toBe(false);
+  });
+});
+
+describe("aportes pontuais", () => {
+  const none: SimpleInput = { ...base, invested: 0, monthly: 0 };
+  const r = realMonthlyRate(none.annualRate, none.inflation);
+
+  it("valor futuro: aporte do mês k rende (meses − k) meses", () => {
+    const res = simulateRetirement({ ...none, lumpSums: [{ amount: 10_000, month: 12 }] }, 60); // 120 meses
+    expect(res.patrimonio).toBeCloseTo(10_000 * (1 + r) ** 108, 6);
+  });
+  it("mês 0 equivale a investir hoje; o último mês antes da aposentadoria não rende", () => {
+    const hoje = simulateRetirement({ ...none, lumpSums: [{ amount: 5_000, month: 0 }] }, 60);
+    expect(hoje.patrimonio).toBeCloseTo(simulateRetirement({ ...none, invested: 5_000 }, 60).patrimonio, 8);
+    expect(simulateRetirement({ ...none, lumpSums: [{ amount: 5_000, month: 120 }] }, 60).patrimonio).toBeCloseTo(5_000, 8);
+  });
+  it("depois da aposentadoria não conta — e por isso pode contar aos 65 mas não aos 60", () => {
+    const l = { ...none, lumpSums: [{ amount: 50_000, month: 130 }] };
+    expect(simulateRetirement(l, 60).patrimonio).toBe(0);
+    expect(simulateRetirement(l, 60).totalAportado).toBe(0);
+    expect(simulateRetirement(l, 65).patrimonio).toBeCloseTo(50_000 * (1 + r) ** 50, 6);
+  });
+  it("soma-se ao aporte mensal e entra nos totais (hoje e projetado)", () => {
+    const withLump = simulateRetirement({ ...base, lumpSums: [{ amount: 30_000, month: 24 }, { amount: 20_000, month: 60 }] }, 60);
+    const without = simulateRetirement(base, 60);
+    expect(withLump.patrimonio).toBeGreaterThan(without.patrimonio + 50_000);
+    expect(withLump.totalAportado).toBe(without.totalAportado + 50_000);
+    const f = (m: number) => inflationFactor(base.inflation, m / 12);
+    expect(withLump.projetado.totalAportado).toBeCloseTo(without.projetado.totalAportado + 30_000 * f(24) + 20_000 * f(60), 6);
+    expect(withLump.rendaConsumo).toBeGreaterThan(without.rendaConsumo);
+  });
+  it("itens inválidos (valor 0, mês passado) são ignorados", () => {
+    const res = simulateRetirement({ ...base, lumpSums: [{ amount: 0, month: 5 }, { amount: 1_000, month: -3 }] }, 60);
+    expect(res.patrimonio).toBe(simulateRetirement(base, 60).patrimonio);
+  });
+  it("mês a mês: o aporte do mês soma o pontual e o saldo final bate com o patrimônio", () => {
+    const input = { ...base, lumpSums: [{ amount: 40_000, month: 0 }, { amount: 25_000, month: 36 }] };
+    const today = new Date(Date.UTC(2026, 9, 15));
+    const rows = monthlySchedule(input, 60, "consumo", today);
+    const res = simulateRetirement(input, 60);
+    expect(rows[35]!.aporte).toBe(base.monthly + 25_000); // mês 36
+    expect(rows[0]!.saldoInicial).toBe(base.invested + 40_000); // pontual de "hoje" já no saldo inicial
+    expect(rows[res.months - 1]!.saldoFinal).toBeCloseTo(res.patrimonio, 4);
+    expect(rows.filter((r) => r.phase === "acumulacao").reduce((t, r) => t + r.aporte, 0)).toBeCloseTo(res.totalAportado - 40_000, 6);
+  });
+  it("gráfico: no ano da aposentadoria o patrimônio é o mesmo do cálculo direto", () => {
+    const input = { ...base, lumpSums: [{ amount: 40_000, month: 0 }, { amount: 25_000, month: 30 }] };
+    const pt = wealthByAge(input, [60]).find((p) => p.age === 60)!;
+    expect(Math.abs(pt.a60! - simulateRetirement(input, 60).patrimonio)).toBeLessThan(1);
+  });
+});
+
+describe("aportes pontuais no plano", () => {
+  const today = new Date(Date.UTC(2026, 9, 15)); // out/2026
+  it("planos e cenários antigos (sem o campo) valem como lista vazia", () => {
+    const { lumpSums: _drop, ...old } = defaultPlan();
+    expect(planInputSchema.parse(old).lumpSums).toEqual([]);
+  });
+  it("converte a data em meses a partir de hoje e descarta passado e valor zero", () => {
+    const si = toSimpleInput(
+      { ...defaultPlan(), birthDate: "1975-10-15", lumpSums: [
+        { amount: 1, date: "2026-10" }, { amount: 2, date: "2027-10" }, { amount: 3, date: "2026-09" }, { amount: 0, date: "2028-01" },
+      ] },
+      today,
+    );
+    expect(si.lumpSums).toEqual([{ amount: 1, month: 0 }, { amount: 2, month: 12 }]);
+  });
+  it("valida o formato do mês e o limite de itens", () => {
+    expect(planInputSchema.safeParse({ ...defaultPlan(), lumpSums: [{ amount: 1, date: "2027-13" }] }).success).toBe(false);
+    expect(planInputSchema.safeParse({ ...defaultPlan(), lumpSums: [{ amount: -1, date: "2027-01" }] }).success).toBe(false);
+    expect(planInputSchema.safeParse({ ...defaultPlan(), lumpSums: Array.from({ length: 51 }, () => ({ amount: 1, date: "2027-01" })) }).success).toBe(false);
+  });
+  it("diz em quais aposentadorias o aporte conta", () => {
+    // 51 anos hoje: 60 → 108 meses; 65 → 168 meses
+    expect(lumpSumCountsFor("2030-01", 51, [60, 65], today)).toEqual([60, 65]);
+    expect(lumpSumCountsFor("2037-01", 51, [60, 65], today)).toEqual([65]);
+    expect(lumpSumCountsFor("2045-01", 51, [60, 65], today)).toEqual([]);
+    expect(lumpSumCountsFor("2026-01", 51, [60, 65], today)).toEqual([]);
   });
 });

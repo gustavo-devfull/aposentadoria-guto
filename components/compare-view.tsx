@@ -32,6 +32,7 @@ export function CompareView({ scenarios, canDelete = true }: { scenarios: Scenar
       row("Idade atual", inputs.map((i) => `${i.currentAge} anos`)),
       row("Investido hoje", chosen.map((s) => formatBRL0(s.input.invested))),
       row("Aporte mensal", chosen.map((s) => formatBRL0(s.input.monthly))),
+      row("Aportes pontuais", chosen.map((s) => (s.input.lumpSums.length ? s.input.lumpSums.map((l) => `${formatBRL0(l.amount)} em ${l.date}`).join("; ") : "—"))),
       row("Taxa de juros", chosen.map((s) => `${formatPercent(s.input.annualRate)} a.a.`)),
       row("Inflação", chosen.map((s) => `${formatPercent(s.input.inflation)} a.a.`)),
       row("INSS", chosen.map((s) => `${formatBRL0(s.input.inssBenefit)} aos ${s.input.inssStartAge}`)),

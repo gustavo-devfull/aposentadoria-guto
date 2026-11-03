@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { plans } from "@/db/schema";
 import { fromDbMoney, toDbMoney } from "@/lib/money";
-import { planInputSchema, type PlanInput } from "@/lib/plan";
+import { lumpSumInputSchema, planInputSchema, type PlanInput } from "@/lib/plan";
 
 export async function loadPlan(userId: string): Promise<PlanInput | null> {
   const [row] = await getDb().select().from(plans).where(eq(plans.userId, userId));
@@ -16,6 +16,11 @@ export async function loadPlan(userId: string): Promise<PlanInput | null> {
     inssBenefit: fromDbMoney(row.inssBeneficio),
     inssStartAge: row.inssIdade,
     horizonAge: row.horizonteIdade,
+    // jsonb: revalida ao ler, ignorando itens que não passem no schema
+    lumpSums: (row.aportesPontuais ?? []).flatMap((l) => {
+      const r = lumpSumInputSchema.safeParse(l);
+      return r.success ? [r.data] : [];
+    }),
   };
 }
 
@@ -31,6 +36,7 @@ export async function savePlan(userId: string, raw: unknown) {
     inssBeneficio: toDbMoney(p.inssBenefit),
     inssIdade: p.inssStartAge,
     horizonteIdade: p.horizonAge,
+    aportesPontuais: p.lumpSums,
     updatedAt: new Date(),
   };
   await getDb().insert(plans).values({ userId, ...values }).onConflictDoUpdate({ target: plans.userId, set: values });

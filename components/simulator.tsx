@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { savePlanAction, saveScenarioAction } from "@/app/simulador/actions";
 import { RetirementResults } from "@/components/retirement-results";
 import { Button, Card, Field, Input, MoneyField, NumberField } from "@/components/ui";
-import { ageOn, toSimpleInput, type PlanInput } from "@/lib/plan";
+import { ageOn, lumpSumCountsFor, monthsFromToday, RETIREMENT_AGES, toSimpleInput, type LumpSumInput, type PlanInput } from "@/lib/plan";
 import { RATE_PRESETS } from "@/lib/simulator";
 
 const fmtPct = (v: number) => `${(v * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
@@ -33,6 +33,20 @@ export function Simulator({ initial, hasPlan, canSave = true }: { initial: PlanI
   const presets = [...RATE_PRESETS.map((p) => ({ label: p.label, rate: p.rate, text: fmtPct(p.rate) })), { label: "Tesouro IPCA+", rate: ipcaRate, text: "7% + inflação" }];
   const dirty = JSON.stringify(plan) !== JSON.stringify(initial);
 
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const nextMonth = (() => { const d = new Date(); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 7); })();
+  const setLump = (i: number, patch: Partial<LumpSumInput>) =>
+    setPlan((o) => ({ ...o, lumpSums: o.lumpSums.map((l, j) => (j === i ? { ...l, ...patch } : l)) }));
+  /** Aviso sobre em quais aposentadorias o aporte pontual conta. */
+  const lumpNote = (date: string): string | null => {
+    if (!/^\d{4}-\d{2}$/.test(date)) return "Escolha o mês.";
+    if (monthsFromToday(date) < 0) return "Esse mês já passou: não conta.";
+    const counts = lumpSumCountsFor(date, input.currentAge, RETIREMENT_AGES);
+    if (counts.length === 0) return "Depois da aposentadoria: não afeta o resultado.";
+    if (counts.length < RETIREMENT_AGES.length) return `Conta só para a aposentadoria aos ${counts.join(" e ")}.`;
+    return null;
+  };
+
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) =>
     start(async () => {
       const r = await fn();
@@ -58,6 +72,30 @@ export function Simulator({ initial, hasPlan, canSave = true }: { initial: PlanI
               </Field>
               <MoneyField label="Investido hoje" value={plan.invested} onChange={set("invested")} />
               <MoneyField label="Aporte mensal" value={plan.monthly} onChange={set("monthly")} hint="Até a aposentadoria (60 ou 65). Corrigido pela inflação." />
+            </Section>
+
+            <Section title="Aportes pontuais">
+              <p className="-mt-1 text-xs text-muted">Depósitos avulsos (bônus, venda de um bem). Valor em R$ de hoje, corrigido pela inflação até o mês; entra no fim do mês e só conta até a aposentadoria.</p>
+              {plan.lumpSums.map((l, i) => {
+                const note = lumpNote(l.date);
+                return (
+                  <div key={i} className="space-y-2 rounded-xl border border-line p-3" data-testid="lump-sum">
+                    <div className="flex items-end gap-2">
+                      <div className="min-w-0 flex-1"><MoneyField label={`Aporte pontual ${i + 1}`} value={l.amount} onChange={(v) => setLump(i, { amount: v })} /></div>
+                      <Button variant="ghost" className="shrink-0 !px-3" aria-label={`Remover aporte pontual ${i + 1}`}
+                        onClick={() => set("lumpSums")(plan.lumpSums.filter((_, j) => j !== i))}>×</Button>
+                    </div>
+                    <Field label="Mês" htmlFor={`lump-mes-${i}`}>
+                      <Input id={`lump-mes-${i}`} type="month" aria-label={`Mês do aporte pontual ${i + 1}`} min={thisMonth} value={l.date}
+                        onChange={(e) => setLump(i, { date: e.target.value })} />
+                    </Field>
+                    {note && <p className="text-xs text-warn-fg">{note}</p>}
+                  </div>
+                );
+              })}
+              <Button variant="ghost" className="w-full" onClick={() => set("lumpSums")([...plan.lumpSums, { amount: 10000, date: nextMonth }])}>
+                + Adicionar aporte pontual
+              </Button>
             </Section>
 
             <Section title="Rendimento">
