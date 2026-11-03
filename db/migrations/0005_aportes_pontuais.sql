@@ -1,1 +1,1 @@
-ALTER TABLE "plans" ADD COLUMN "aportes_pontuais" jsonb DEFAULT '[]'::jsonb NOT NULL;
+ALTER TABLE "plans" ADD COLUMN IF NOT EXISTS "aportes_pontuais" jsonb DEFAULT '[]'::jsonb NOT NULL;

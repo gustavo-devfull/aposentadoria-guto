@@ -29,7 +29,7 @@ Cálculo: `lib/simulator.ts` (funções puras). Plano e validação (Zod): `lib/
 Tabelas do app: `plans` (um plano por usuário) e `scenarios` (cenários salvos), mais as do Auth.js. Todas com **RLS** ativado sem políticas: a API pública do Supabase fica sem acesso; só o servidor do app lê/grava, sempre filtrando por `user_id`.
 
 1. `cp .env.example .env` e preencha `DATABASE_URL` (Transaction pooler, 6543) e `DIRECT_URL` (Session pooler, 5432).
-2. `npm run db:migrate`.
+2. `npm run db:migrate`. **Rode de novo sempre que uma atualização trouxer migration nova** (`db/migrations/`): o deploy da Vercel não migra o banco, e uma coluna faltando derruba as telas com o erro #441 do React (veja o motivo real nos logs da Vercel).
 3. Na Vercel, defina `DATABASE_URL` (a do pooler transacional) e as demais variáveis do `.env.example`.
 
 **Modelo antigo:** as tabelas do motor anterior (carteira, metas de gasto, premissas, acompanhamento…) continuam no banco, declaradas em `db/legacy-schema.ts`, mas o app não as usa mais — a migration `0004` converteu os planos para `plans`. Para apagá-las, remova as definições desse arquivo e rode `npm run db:generate`.
