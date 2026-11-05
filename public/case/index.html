@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Aposentadoria: case de produto e engenharia</title>
+  <meta name="description" content="Um simulador de aposentadoria que compara parar de trabalhar aos 60 e aos 65, em reais de hoje, com o INSS só a partir dos 65. Case de produto e engenharia.">
+  <meta property="og:type" content="article">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="Aposentadoria: case de produto e engenharia">
+  <meta property="og:description" content="Quanto de renda eu tenho se parar de trabalhar aos 60? E aos 65? Do problema ao app instalável em produção.">
+  <meta name="theme-color" content="#eef3f2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0c1615" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="/case/fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/case/fonts/source-serif.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    @font-face { font-family: "Bricolage Grotesque"; font-style: normal; font-weight: 500 800; font-display: swap; src: url("/case/fonts/bricolage.woff2") format("woff2"); }
+    @font-face { font-family: "Source Serif 4"; font-style: normal; font-weight: 400 700; font-display: swap; src: url("/case/fonts/source-serif.woff2") format("woff2"); }
+    @font-face { font-family: "Source Serif 4"; font-style: italic; font-weight: 400 600; font-display: swap; src: url("/case/fonts/source-serif-italic.woff2") format("woff2"); }
+
+    :root {
+      --paper: #eef3f2;
+      --surface: #fbfdfc;
+      --ink: #0d2b29;
+      --muted: #4b6360;
+      --line: #cbdad8;
+      --teal: #0f766e;
+      --teal-soft: #cfe6e2;
+      --amber: #b7791f;
+      --accum: #9fb5b1;
+      --blue: #3b82f6;
+      --orange: #f97316;
+      --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      --text: "Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #0c1615;
+        --surface: #122120;
+        --ink: #e4efed;
+        --muted: #9ab2ae;
+        --line: #243836;
+        --teal: #2dd4bf;
+        --teal-soft: #123c38;
+        --amber: #e0a63f;
+        --accum: #3d5753;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--text); font-size: 1.125rem; line-height: 1.68; }
+    img { display: block; max-width: 100%; height: auto; }
+    a { color: var(--teal); text-underline-offset: 3px; }
+    a:focus-visible, .btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; border-radius: 4px; }
+
+    .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding-inline: clamp(20px, 5vw, 48px); }
+
+    /* Barra superior */
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 20px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 650; font-size: 1.05rem; color: var(--ink); text-decoration: none; }
+    .brand svg { width: 30px; height: 30px; }
+    .btn { display: inline-flex; align-items: center; font-family: var(--display); font-weight: 600; font-size: .95rem; text-decoration: none; color: var(--paper); background: var(--ink); padding: 9px 18px; border-radius: 999px; }
+    .btn:hover { background: var(--teal); }
+    @media (prefers-color-scheme: dark) { .btn { color: #062b27; background: var(--teal); } .btn:hover { background: #5eead4; } }
+
+    /* Hero */
+    .hero { padding-block: clamp(36px, 8vw, 88px) clamp(28px, 5vw, 56px); }
+    h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.35rem, 6.4vw, 4.6rem); line-height: 1.02; letter-spacing: -0.032em; margin: 0; max-width: 17ch; text-wrap: balance; }
+    .lede { font-size: clamp(1.15rem, 2.2vw, 1.4rem); line-height: 1.55; color: var(--muted); max-width: 46ch; margin: 28px 0 0; }
+
+    /* A régua: o produto em uma imagem. Duas idades de aposentadoria, uma ponte sem INSS. */
+    .ruler { margin: clamp(36px, 6vw, 64px) 0 0; }
+    .scenarios { position: relative; display: grid; gap: 22px; padding-top: 4px; }
+    .row-label { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 600; font-size: 1rem; margin-bottom: 8px; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+    .dot.a { background: var(--blue); }
+    .dot.b { background: var(--orange); }
+    .track { position: relative; height: 30px; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--line) 60%, transparent); }
+    .seg { position: absolute; top: 0; bottom: 0; left: calc(var(--from) * 1%); width: calc((var(--to) - var(--from)) * 1%); transform-origin: left center; animation: draw 1s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--from) * 22ms + 120ms); }
+    .seg.accum { background: var(--accum); }
+    .seg.bridge { background: var(--amber); }
+    .seg.inss { background: var(--teal); }
+    @keyframes draw { from { transform: scaleX(0); } }
+    @media (prefers-reduced-motion: reduce) { .seg { animation: none; } }
+
+    .axis { position: relative; height: 30px; margin-top: 18px; font-family: var(--display); font-size: .88rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .tick { position: absolute; top: 0; left: calc(var(--at) * 1%); transform: translateX(-50%); white-space: nowrap; }
+    .tick::before { content: ""; position: absolute; left: 50%; top: -12px; width: 2px; height: 8px; margin-left: -1px; background: currentColor; opacity: .55; }
+    .tick.first { transform: none; }
+    .tick.first::before { left: 0; margin-left: 0; }
+    .tick.last { transform: translateX(-100%); }
+    .tick.last::before { left: auto; right: 0; margin-left: 0; }
+    .tick.t60 { color: var(--blue); font-weight: 700; }
+    .tick.t65 { color: var(--orange); font-weight: 700; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 18px 0 0; padding: 0; list-style: none; font-family: var(--display); font-size: .92rem; }
+    .legend li { display: flex; align-items: center; gap: 8px; }
+    .sw { width: 16px; height: 16px; border-radius: 4px; flex: none; }
+    .sw.accum { background: var(--accum); }
+    .sw.bridge { background: var(--amber); }
+    .sw.inss { background: var(--teal); }
+    .ruler-note { max-width: 58ch; margin: 22px 0 0; color: var(--muted); }
+
+    /* Ficha */
+    .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 24px 36px; margin: clamp(36px, 6vw, 64px) 0 0; padding: 28px 0 0; border-top: 1px solid var(--line); }
+    .facts dt { font-family: var(--display); font-size: .9rem; color: var(--muted); }
+    .facts dd { margin: 4px 0 0; font-size: 1rem; line-height: 1.5; }
+
+    /* Seções: título na margem, texto em coluna estreita */
+    .sec { display: grid; grid-template-columns: 210px minmax(0, 1fr); column-gap: 56px; padding-block: clamp(40px, 7vw, 72px); border-top: 1px solid var(--line); }
+    .sec > h2 { grid-column: 1; margin: 0; font-family: var(--display); font-weight: 650; font-size: 1.45rem; line-height: 1.2; letter-spacing: -0.015em; align-self: start; position: sticky; top: 24px; }
+    .sec > .body { grid-column: 2; min-width: 0; }
+    .prose { max-width: 62ch; }
+    .prose p { margin: 0 0 1.1em; }
+    .prose p:last-child { margin-bottom: 0; }
+    .wide { grid-column: 1 / -1; }
+    @media (max-width: 820px) {
+      .sec { grid-template-columns: minmax(0, 1fr); }
+      .sec > h2 { position: static; margin-bottom: 20px; }
+      .sec > .body { grid-column: 1; }
+    }
+
+    .features { margin: 0; display: grid; gap: 22px; max-width: 62ch; }
+    .features dt { font-family: var(--display); font-weight: 650; font-size: 1.08rem; }
+    .features dd { margin: 2px 0 0; }
+
+    .decisions { display: grid; gap: 32px; max-width: 62ch; }
+    .decisions h3 { font-family: var(--display); font-weight: 650; font-size: 1.2rem; line-height: 1.25; letter-spacing: -0.01em; margin: 0 0 6px; }
+    .decisions p { margin: 0; }
+    .decisions code, .prose code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .86em; background: color-mix(in srgb, var(--line) 55%, transparent); padding: .12em .4em; border-radius: 4px; white-space: nowrap; }
+    .decisions code.long, .prose code.long { white-space: normal; }
+
+    .checks { margin: 18px 0 0; padding-left: 1.2em; max-width: 62ch; }
+    .checks li { margin-bottom: .6em; }
+
+    /* Telas */
+    .shots { display: grid; gap: clamp(20px, 3vw, 36px); margin-top: clamp(32px, 5vw, 56px); }
+    .pair { display: grid; gap: clamp(20px, 3vw, 36px); grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    .pair.phone { grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr); }
+    @media (max-width: 720px) { .pair, .pair.phone { grid-template-columns: minmax(0, 1fr); } .pair.phone figure:last-child { max-width: 300px; } }
+    figure { margin: 0; }
+    .frame { display: block; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+    a.frame:hover { border-color: var(--teal); }
+    figcaption { margin-top: 10px; font-size: .95rem; line-height: 1.5; color: var(--muted); max-width: 60ch; }
+
+    footer { border-top: 1px solid var(--line); padding-block: 40px 56px; color: var(--muted); font-size: .98rem; }
+    footer p { margin: 0 0 .6em; max-width: 62ch; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="/" aria-label="Aposentadoria, abrir o app">
+        <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#0f766e"/><g transform="translate(256 256) scale(14) translate(-12 -12)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></g></svg>
+        Aposentadoria
+      </a>
+      <a class="btn" href="/">Abrir o app</a>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="titulo">
+        <h1 id="titulo">Quanto de renda eu tenho se parar de trabalhar aos 60? E aos 65?</h1>
+        <p class="lede">Um simulador de aposentadoria que coloca as duas idades lado a lado, em reais de hoje, com o INSS entrando só aos 65. Um projeto pessoal, da pergunta ao app instalável em produção.</p>
+
+        <figure class="ruler" role="img" aria-label="Linha do tempo de 50 a 90 anos. Quem se aposenta aos 60 acumula até os 60, passa cinco anos sem INSS vivendo só da carteira, e depois recebe carteira mais INSS. Quem se aposenta aos 65 acumula até os 65 e já recebe carteira mais INSS.">
+          <div class="scenarios">
+            <div>
+              <div class="row-label"><span class="dot a"></span>Aposentar aos 60</div>
+              <div class="track">
+                <span class="seg accum" style="--from:0;--to:25"></span>
+                <span class="seg bridge" style="--from:25;--to:37.5"></span>
+                <span class="seg inss" style="--from:37.5;--to:100"></span>
+              </div>
+            </div>
+            <div>
+              <div class="row-label"><span class="dot b"></span>Aposentar aos 65</div>
+              <div class="track">
+                <span class="seg accum" style="--from:0;--to:37.5"></span>
+                <span class="seg inss" style="--from:37.5;--to:100"></span>
+              </div>
+            </div>
+          </div>
+          <div class="axis" aria-hidden="true">
+            <span class="tick first" style="--at:0">50 anos</span>
+            <span class="tick t60" style="--at:25">60</span>
+            <span class="tick t65" style="--at:37.5">65</span>
+            <span class="tick" style="--at:62.5">75</span>
+            <span class="tick last" style="--at:100">90</span>
+          </div>
+          <ul class="legend" aria-hidden="true">
+            <li><span class="sw accum"></span>Acumulando, com aportes e juros</li>
+            <li><span class="sw bridge"></span>Sem INSS: a carteira paga tudo</li>
+            <li><span class="sw inss"></span>Carteira mais INSS</li>
+          </ul>
+          <figcaption class="ruler-note">Entre os 60 e os 65 não entra INSS. Esses cinco anos saem inteiros da carteira, e é a eles que o produto dá atenção.</figcaption>
+        </figure>
+
+        <dl class="facts">
+          <div><dt>Papel</dt><dd>Produto, design e desenvolvimento full-stack</dd></div>
+          <div><dt>Stack</dt><dd>Next.js 16, React 19, TypeScript, Tailwind, Zod, Drizzle, Supabase (Postgres) e Auth.js</dd></div>
+          <div><dt>Status</dt><dd>No ar na Vercel e instalável como app (PWA)</dd></div>
+          <div><dt>Testes</dt><dd>Vitest, Postgres em memória (PGlite) e Playwright</dd></div>
+        </dl>
+      </section>
+
+      <section class="sec" aria-labelledby="problema">
+        <h2 id="problema">O problema</h2>
+        <div class="body prose">
+          <p>Quem contribui ao INSS pelo salário mínimo recebe um salário mínimo de aposentadoria, e só a partir dos 65 anos. Quem para de trabalhar aos 60 passa cinco anos vivendo apenas do que investiu.</p>
+          <p>Muitas calculadoras param em quanto você vai acumular. A pergunta de quem precisa decidir é outra: quanto isso paga por mês aos 60, quanto paga aos 65, e quanto do patrimônio some na ponte entre as duas idades?</p>
+          <p>O produto nasceu de um caso real e tem uma regra: toda resposta em reais de hoje, para que uma renda de daqui a vinte anos possa ser comparada com o que se gasta agora.</p>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="app">
+        <h2 id="app">O que o app faz</h2>
+        <div class="body">
+          <dl class="features">
+            <div><dt>Meu plano</dt><dd>As duas aposentadorias lado a lado: a renda mensal vivendo só dos juros, com o patrimônio intacto, e a renda consumindo o patrimônio até a idade escolhida. Mostra também a renda dos 60 aos 65, antes do INSS.</dd></div>
+            <div><dt>Simulador</dt><dd>Muda o que já está investido, o aporte, a taxa, a inflação e o INSS, e mostra o resultado na hora. Aportes pontuais, como um bônus ou a venda de um bem, entram no mês escolhido.</dd></div>
+            <div><dt>Mês a mês</dt><dd>Cada mês até o horizonte, com saldo, aporte, saque, juros, INSS e renda, em reais de hoje ou projetados. Exporta para CSV.</dd></div>
+            <div><dt>Comparar</dt><dd>Salva cenários e compara de dois a três lado a lado, destacando o que muda entre eles.</dd></div>
+            <div><dt>App no celular</dt><dd>Instala na tela inicial, abre em tela cheia e avisa com clareza quando está sem conexão.</dd></div>
+          </dl>
+        </div>
+
+        <div class="wide shots">
+          <figure>
+            <a class="frame" href="/case/img/meu-plano.jpg" target="_blank" rel="noopener"><img src="/case/img/meu-plano.jpg" width="1920" height="1440" loading="lazy" alt="Tela Meu plano com dois cartões, aposentar aos 60 e aos 65, mostrando a renda mensal com INSS, a renda só dos juros e o gráfico de evolução do patrimônio."></a>
+            <figcaption>Meu plano: as duas idades lado a lado, com a renda dos 60 aos 65 destacada antes do INSS. Dados fictícios.</figcaption>
+          </figure>
+          <figure>
+            <a class="frame" href="/case/img/simulador.jpg" target="_blank" rel="noopener"><img src="/case/img/simulador.jpg" width="1920" height="1440" loading="lazy" alt="Simulador com campos de investimento, aporte mensal, um aporte pontual de R$ 150.000 em junho de 2028 e os resultados atualizados ao lado."></a>
+            <figcaption>Simulador com um aporte pontual: o resultado muda enquanto se digita. Clique para ver em tamanho original.</figcaption>
+          </figure>
+          <figure>
+            <a class="frame" href="/case/img/mes-a-mes.jpg" target="_blank" rel="noopener"><img src="/case/img/mes-a-mes.jpg" width="1920" height="1440" loading="lazy" alt="Tabela mês a mês com saldo inicial, aporte, saque, juros, INSS, renda e saldo final de cada mês."></a>
+            <figcaption>Mês a mês: a mesma conta, aberta mês por mês, com exportação em CSV.</figcaption>
+          </figure>
+          <div class="pair phone">
+            <figure>
+              <a class="frame" href="/case/img/comparar.jpg" target="_blank" rel="noopener"><img src="/case/img/comparar.jpg" width="1920" height="1440" loading="lazy" alt="Comparação de três cenários com patrimônio e renda aos 60 e aos 65, destacando em verde o melhor valor de cada linha."></a>
+              <figcaption>Comparar: três cenários, com o melhor valor de cada linha em destaque.</figcaption>
+            </figure>
+            <figure>
+              <a class="frame" href="/case/img/celular.jpg" target="_blank" rel="noopener"><img src="/case/img/celular.jpg" width="786" height="1702" loading="lazy" alt="Simulador no celular, com campos grandes de data de nascimento, investido hoje e aporte mensal."></a>
+              <figcaption>No celular, sem zoom ao tocar nos campos.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="decisoes">
+        <h2 id="decisoes">Decisões que moldaram o produto</h2>
+        <div class="body">
+          <div class="decisions">
+            <article>
+              <h3>Tudo em reais de hoje</h3>
+              <p>Um valor nominal de daqui a 25 anos engana: parece muito e compra pouco. O cálculo converte a taxa nominal em taxa real, <code>(1 + taxa) ÷ (1 + inflação) − 1</code>, e corrige o aporte pela inflação para manter o poder de compra. O valor projetado aparece como informação secundária, com o ano a que se refere.</p>
+            </article>
+            <article>
+              <h3>Fórmulas para a resposta, simulação para a tabela</h3>
+              <p>O valor futuro e a retirada constante saem de fórmulas, então o resultado muda enquanto a pessoa digita. A tabela mês a mês é uma segunda implementação, feita mês por mês, e um teste exige que as duas cheguem ao mesmo patrimônio. Se uma divergir, o teste quebra.</p>
+            </article>
+            <article>
+              <h3>Duas rendas, porque são duas perguntas</h3>
+              <p>Viver só dos juros mantém o patrimônio intacto. Consumir o patrimônio até uma idade escolhida paga mais por mês, mas termina em zero. Mostrar as duas evita decidir pela pessoa quanto do próprio capital ela aceita gastar.</p>
+            </article>
+            <article>
+              <h3>Um motor pequeno o bastante para explicar cada número</h3>
+              <p>A primeira versão era bem maior: imposto de renda por tipo de investimento, carteira por classe de ativo, premissas versionadas, Monte Carlo e acompanhamento mensal. A versão no ar ficou com o essencial, e cada número na tela vem de uma conta que cabe numa linha.</p>
+            </article>
+            <article>
+              <h3>Dados pessoais protegidos por padrão</h3>
+              <p>No Supabase, todas as tabelas têm RLS ativado sem nenhuma política, então a API pública não enxerga nada. Só o servidor do app lê e grava, sempre filtrando por usuário. Tudo que vem do navegador é validado de novo no servidor, com o mesmo schema (Zod) do formulário.</p>
+            </article>
+            <article>
+              <h3>Um PWA que não guarda o plano no aparelho</h3>
+              <p>O service worker guarda só arquivos estáticos e a tela de &ldquo;sem conexão&rdquo;. Páginas, plano e login nunca ficam em cache, então nada pessoal sobra no aparelho depois que a pessoa sai da conta.</p>
+            </article>
+            <article>
+              <h3>Detalhes de celular que fazem diferença</h3>
+              <p>O iPhone dá zoom em qualquer campo com texto menor que 16 px. Em telas de toque os campos usam 16 px e o toque duplo não amplia a página. O zoom por pinça continua liberado, por acessibilidade.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="qualidade">
+        <h2 id="qualidade">Como garanto que as contas estão certas</h2>
+        <div class="body prose">
+          <p>Mais de 40 testes automatizados cobrem o cálculo, a validação, as migrations e o PWA, e testes ponta a ponta rodam o app num navegador de verdade. Alguns exemplos do que eles garantem:</p>
+          <ul class="checks">
+            <li>o saldo final da tabela mês a mês é igual ao patrimônio calculado pela fórmula;</li>
+            <li>um aporte pontual depois da aposentadoria não altera o resultado, e um aporte que cai entre os 60 e os 65 conta só para a aposentadoria aos 65;</li>
+            <li>as migrations rodam num Postgres de verdade, em memória (PGlite), com o RLS ativado;</li>
+            <li>em telas de toque os campos têm 16 px, e o app mostra a tela offline quando falta conexão.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="errou">
+        <h2 id="errou">O que deu errado</h2>
+        <div class="body prose">
+          <p>Em produção apareceu um erro genérico do React, o <code>#441</code>. Eu tinha adicionado uma coluna ao banco para os aportes pontuais, e o deploy foi ao ar antes de a migration rodar. O React esconde a mensagem real em produção. Ela estava nos logs de execução da Vercel: <code class="long">column "aportes_pontuais" does not exist</code>.</p>
+          <p>O que mudei: a migration passou a ser idempotente (<code>IF NOT EXISTS</code>), as páginas ganharam uma tela de erro que aponta a causa provável e mostra um código para procurar nos logs, e o README avisa que cada migration nova precisa ser aplicada no banco.</p>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="proximos">
+        <h2 id="proximos">Próximos passos</h2>
+        <div class="body prose">
+          <ul class="checks" style="margin-top:0">
+            <li>Aplicar as migrations no deploy sem que uma branch de preview mexa no banco de produção.</li>
+            <li>Calcular o imposto sobre o resgate por tipo de investimento. Hoje o app pede a taxa já líquida de IR.</li>
+            <li>Retomar a simulação de Monte Carlo, que existiu na primeira versão, para mostrar uma faixa de risco além de um número único.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Simulação educativa baseada em premissas. Não constitui recomendação de investimento. Os dados das telas são fictícios.</p>
+      <p>Desenvolvido com apoio do Claude Code. <a href="/">Abrir o app</a></p>
+    </footer>
+  </div>
+</body>
+</html>

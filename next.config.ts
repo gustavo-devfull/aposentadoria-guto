@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    // Página de case (HTML estático em public/case), pública e independente do app.
+    return [{ source: "/case", destination: "/case/index.html" }];
+  },
   async headers() {
     return [
       {

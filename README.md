@@ -26,6 +26,11 @@ Cálculo: `lib/simulator.ts` (funções puras). Plano e validação (Zod): `lib/
 - Ao mudar o service worker, altere `VERSION` em `public/sw.js` para limpar o cache antigo.
 - Campos sem zoom: em telas de toque, `input/select/textarea` ficam com 16px (o iOS só amplia abaixo disso) e há `touch-action: manipulation` (sem zoom por toque duplo). O pinch continua liberado, por acessibilidade.
 
+## Página de case (portfólio)
+`/case` é uma página pública e independente do app (HTML estático em `public/case/`, sem login, sem JavaScript, fontes e imagens locais). Para levá-la ao portfólio, copie a pasta `public/case/` inteira e troque os links `href="/"` ("Abrir o app") pelo endereço do app.
+- Capturas de tela (dados e data de nascimento **fictícios**): `ENABLE_DEMO=1 npx next start -p 3111` e, em outro terminal, `PW_CHROMIUM=/caminho/chromium node scripts/case-screenshots.mjs`.
+- O texto descreve o histórico real do projeto (versão grande, depois a versão enxuta, e o incidente da migration). Ajuste ao que você quiser contar.
+
 ## Comandos
 `npm run test` · `npm run typecheck` · `npm run lint` · `npm run e2e` · `npm run db:generate` · `npm run db:migrate`
 

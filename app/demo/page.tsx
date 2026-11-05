@@ -8,10 +8,10 @@ import { defaultPlan, type PlanInput } from "@/lib/plan";
 export const dynamic = "force-dynamic";
 
 /** Telas com dados fictícios, sem login nem banco. Desligado em produção. */
-export default async function DemoPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const { view } = await searchParams;
+export default async function DemoPage({ searchParams }: { searchParams: Promise<{ view?: string; nasc?: string }> }) {
+  const { view, nasc } = await searchParams;
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DEMO !== "1") notFound();
-  const plan: PlanInput = { ...defaultPlan(), birthDate: "1975-10-15", invested: 800_000, monthly: 4_000 };
+  const plan: PlanInput = { ...defaultPlan(), birthDate: /^\d{4}-\d{2}-\d{2}$/.test(nasc ?? "") ? nasc! : "1975-10-15", invested: 800_000, monthly: 4_000 };
   const scenarios = [
     { id: "a", nome: "Poupança", createdAt: "2026-10-05T12:00:00Z", input: { ...plan, annualRate: 0.0617 } },
     { id: "b", nome: "CDB 12%", createdAt: "2026-10-05T12:00:00Z", input: plan },
