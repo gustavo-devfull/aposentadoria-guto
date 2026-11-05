@@ -18,6 +18,14 @@ Cálculo: `lib/simulator.ts` (funções puras). Plano e validação (Zod): `lib/
 `/dashboard` (meu plano: 60 × 65) · `/simulador` (testar variações, salvar como plano ou como cenário) · `/comparar` (2 a 3 cenários lado a lado).
 `/demo?view=simulador|comparar` mostra as telas com dados fictícios, sem login nem banco (em produção só com `ENABLE_DEMO=1`).
 
+## PWA (app instalável)
+- `app/manifest.ts` (nome, cores, ícones, atalhos), `public/sw.js` (service worker) e `public/offline.html` (tela sem conexão). O service worker só é registrado em produção.
+- O que fica em cache: apenas arquivos estáticos (`/_next/static`, ícones) e a página offline. **Páginas, dados do plano e `/api/*` nunca são guardados** — sem internet o app mostra "Você está sem conexão".
+- Botão **Instalar app** no cabeçalho (Chrome/Android/desktop). No iPhone: Safari → Compartilhar → Adicionar à Tela de Início.
+- Ícones: `PW_CHROMIUM=/caminho/chromium node scripts/generate-icons.mjs` (regera `public/icons/*`, `app/icon.svg`, `app/apple-icon.png` a partir do logo).
+- Ao mudar o service worker, altere `VERSION` em `public/sw.js` para limpar o cache antigo.
+- Campos sem zoom: em telas de toque, `input/select/textarea` ficam com 16px (o iOS só amplia abaixo disso) e há `touch-action: manipulation` (sem zoom por toque duplo). O pinch continua liberado, por acessibilidade.
+
 ## Comandos
 `npm run test` · `npm run typecheck` · `npm run lint` · `npm run e2e` · `npm run db:generate` · `npm run db:migrate`
 

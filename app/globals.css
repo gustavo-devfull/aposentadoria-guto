@@ -65,3 +65,16 @@ body {
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/* Sem zoom ao tocar num campo: o iOS amplia a tela quando o texto do campo tem menos de 16px.
+   Fica fora de @layer de propósito, para vencer as classes utilitárias (text-sm). */
+@media (pointer: coarse) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%; /* não reescala o texto ao girar o aparelho */
+  touch-action: manipulation; /* sem zoom por toque duplo; o pinch continua funcionando */
+}

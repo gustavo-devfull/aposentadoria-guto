@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { devices, expect, test } from "@playwright/test";
 
 test("meu plano: resumo e cartões 60 × 65", async ({ page }) => {
   await page.goto("/demo");
@@ -71,4 +71,53 @@ test("simulador: aporte pontual altera o resultado, avisa quando não conta e po
   await page.getByRole("button", { name: "Remover aporte pontual 1", exact: true }).click();
   await expect(page.getByTestId("lump-sum")).toHaveCount(0);
   await expect.poll(() => kpis.innerText()).toBe(before); // volta exatamente ao resultado sem o aporte
+});
+
+test.describe("PWA", () => {
+  test("manifest, ícones e metadados de instalação", async ({ page, request }) => {
+    await page.goto("/demo");
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", /manifest\.webmanifest/);
+    await expect(page.locator('meta[name="theme-color"]').first()).toHaveAttribute("content", /#/);
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", /viewport-fit=cover/);
+    const res = await request.get("/manifest.webmanifest");
+    expect(res.ok()).toBe(true);
+    const m = await res.json();
+    expect(m).toMatchObject({ display: "standalone", lang: "pt-BR", scope: "/" });
+    for (const icon of m.icons) {
+      const r = await request.get(icon.src);
+      expect(r.ok(), icon.src).toBe(true);
+      expect(r.headers()["content-type"]).toContain("image/png");
+    }
+  });
+
+  test("service worker ativa e, sem internet, mostra a página offline", async ({ page, context }) => {
+    await page.goto("/demo");
+    await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+    expect(await page.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r?.active?.state))).toBe("activated");
+    const sw = await page.request.get("/sw.js");
+    expect(sw.headers()["cache-control"]).toContain("no-cache");
+    await context.setOffline(true);
+    await page.goto("/demo?view=simulador").catch(() => {});
+    await expect(page.getByRole("heading", { name: "Você está sem conexão" })).toBeVisible();
+    await context.setOffline(false);
+  });
+});
+
+// Mesmo aparelho do Pixel 5 (tela, toque, user agent), sem o navegador padrão, que não pode mudar dentro de um describe.
+const { defaultBrowserType: _browser, ...pixel5 } = devices["Pixel 5"];
+
+test.describe("campos sem zoom no celular", () => {
+  test.use(pixel5);
+  test("inputs e selects têm 16px (o iOS só dá zoom abaixo disso)", async ({ page }) => {
+    await page.goto("/demo?view=simulador");
+    await page.getByRole("button", { name: "+ Adicionar aporte pontual" }).click();
+    const sizes = await page.evaluate(() =>
+      [...document.querySelectorAll("input, select, textarea")].map((e) => getComputedStyle(e).fontSize),
+    );
+    expect(sizes.length).toBeGreaterThan(6); // data, valores, taxa, inflação, mês do aporte…
+    expect(new Set(sizes)).toEqual(new Set(["16px"]));
+    // sem zoom por toque duplo
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).touchAction)).toBe("manipulation");
+  });
 });

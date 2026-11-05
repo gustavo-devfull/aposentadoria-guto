@@ -1,13 +1,27 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { auth, signOut } from "@/auth";
 import { AppNav } from "@/components/app-nav";
+import { InstallButton, ServiceWorkerRegister } from "@/components/pwa";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Aposentadoria",
+  applicationName: "Aposentadoria",
   description: "Quanto você terá de renda aos 60 ou 65 anos",
+  appleWebApp: { capable: true, title: "Aposentadoria", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // usa a tela toda (notch); o espaçamento seguro vem do CSS (env(safe-area-inset-*))
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0f766e" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d0f0f" },
+  ],
 };
 
 function Logo() {
@@ -28,10 +42,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className="min-h-screen antialiased" suppressHydrationWarning>
-        <header className="border-b border-line bg-surface/80 backdrop-blur">
+        <header className="border-b border-line bg-surface/80 pt-[env(safe-area-inset-top)] backdrop-blur">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <Logo />
             <Suspense><AppNav /></Suspense>
+            <InstallButton />
             {session?.user && (
               <form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}>
                 <button type="submit" className="text-sm text-muted hover:text-fg">Sair</button>
@@ -40,10 +55,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
-        <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-muted sm:px-6">
+        <footer className="mx-auto max-w-6xl px-4 pb-[max(2rem,env(safe-area-inset-bottom))] text-xs text-muted sm:px-6">
           Simulação educativa baseada em premissas. Não constitui recomendação de investimento.
           Confira o benefício oficial no Meu INSS.
         </footer>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
