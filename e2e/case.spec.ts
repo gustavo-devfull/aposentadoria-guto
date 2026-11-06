@@ -8,7 +8,7 @@ test("a página de case abre sem login, carrega fontes e imagens e a régua apar
   await expect(page).toHaveTitle(/case de produto e engenharia/i);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Quanto de renda eu tenho se parar de trabalhar aos 60?");
   await expect(page.getByRole("img", { name: /Linha do tempo de 50 a 90 anos/ })).toBeVisible();
-  for (const h of ["O problema", "O que o app faz", "Decisões que moldaram o produto", "O que deu errado", "Próximos passos"]) {
+  for (const h of ["O problema", "O que o app faz", "Decisões que moldaram o produto"]) {
     await expect(page.getByRole("heading", { name: h })).toBeVisible();
   }
   // rola até o fim para as imagens `lazy` carregarem

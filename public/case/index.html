@@ -304,24 +304,6 @@
         </div>
       </section>
 
-      <section class="sec" aria-labelledby="errou">
-        <h2 id="errou">O que deu errado</h2>
-        <div class="body prose">
-          <p>Em produção apareceu um erro genérico do React, o <code>#441</code>. Eu tinha adicionado uma coluna ao banco para os aportes pontuais, e o deploy foi ao ar antes de a migration rodar. O React esconde a mensagem real em produção. Ela estava nos logs de execução da Vercel: <code class="long">column "aportes_pontuais" does not exist</code>.</p>
-          <p>O que mudei: a migration passou a ser idempotente (<code>IF NOT EXISTS</code>), as páginas ganharam uma tela de erro que aponta a causa provável e mostra um código para procurar nos logs, e o README avisa que cada migration nova precisa ser aplicada no banco.</p>
-        </div>
-      </section>
-
-      <section class="sec" aria-labelledby="proximos">
-        <h2 id="proximos">Próximos passos</h2>
-        <div class="body prose">
-          <ul class="checks" style="margin-top:0">
-            <li>Aplicar as migrations no deploy sem que uma branch de preview mexa no banco de produção.</li>
-            <li>Calcular o imposto sobre o resgate por tipo de investimento. Hoje o app pede a taxa já líquida de IR.</li>
-            <li>Retomar a simulação de Monte Carlo, que existiu na primeira versão, para mostrar uma faixa de risco além de um número único.</li>
-          </ul>
-        </div>
-      </section>
     </main>
 
     <footer>
