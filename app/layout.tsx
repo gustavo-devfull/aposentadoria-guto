@@ -4,7 +4,10 @@ import { Suspense } from "react";
 import { auth, signOut } from "@/auth";
 import { AppNav } from "@/components/app-nav";
 import { InstallButton, ServiceWorkerRegister } from "@/components/pwa";
+import { Kodchasan } from "next/font/google";
 import "./globals.css";
+
+const kodchasan = Kodchasan({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], variable: "--font-kodchasan", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Aposentadoria",
@@ -19,8 +22,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover", // usa a tela toda (notch); o espaçamento seguro vem do CSS (env(safe-area-inset-*))
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#0f766e" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d0f0f" },
+    { media: "(prefers-color-scheme: light)", color: "#fa6900" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1b1c" },
   ],
 };
 
@@ -40,7 +43,7 @@ function Logo() {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await auth().catch(() => null);
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang="pt-BR" className={kodchasan.variable} suppressHydrationWarning>
       <body className="min-h-screen antialiased" suppressHydrationWarning>
         <header className="border-b border-line bg-surface/80 pt-[env(safe-area-inset-top)] backdrop-blur">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">

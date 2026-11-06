@@ -2,7 +2,7 @@
 import { writeFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
-const ACCENT = "#0f766e";
+const ACCENT = "#fa6900";
 const glyph = (scale) => `
   <g transform="translate(256 256) scale(${scale}) translate(-12 -12)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>

@@ -7,7 +7,7 @@ import { formatBRL0 } from "@/lib/format";
 import { RETIREMENT_AGES } from "@/lib/plan";
 import { simulateRetirement, wealthByAge, type SimpleInput, type SimpleResult } from "@/lib/simulator";
 
-export const COLORS = ["#3b82f6", "#f97316", "#10b981"];
+export const COLORS = ["#69D2E7", "#FA6900", "#A7DBD8"];
 const thisYear = () => new Date().getFullYear();
 const compact = (v: number) =>
   v >= 1e6 ? `R$ ${(v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} mi` : formatBRL0(v);
@@ -154,8 +154,8 @@ export function WealthChart({ input, ages }: { input: SimpleInput; ages: number[
               <Area key={age} type="monotone" dataKey={`a${age}`} name={`Aposentando aos ${age}`}
                 stroke={COLORS[i % COLORS.length]} fill={`url(#fill${age})`} strokeWidth={2} isAnimationActive={false} />
             ))}
-            <ReferenceLine x={input.inssStartAge} stroke="#10b981" strokeDasharray="3 4"
-              label={{ value: "INSS", position: "insideTopRight", fontSize: 11, fill: "#10b981" }} />
+            <ReferenceLine x={input.inssStartAge} stroke="#F38630" strokeDasharray="3 4"
+              label={{ value: "INSS", position: "insideTopRight", fontSize: 11, fill: "#F38630" }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
